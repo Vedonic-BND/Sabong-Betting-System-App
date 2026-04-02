@@ -2,21 +2,20 @@ package com.yego.sabongbettingsystem.ui
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.yego.sabongbettingsystem.data.store.UserStore
-import com.yego.sabongbettingsystem.ui.admin.AdminCreateFightScreen
-import com.yego.sabongbettingsystem.ui.admin.AdminFightDetailScreen
-import com.yego.sabongbettingsystem.ui.admin.AdminFightHistoryScreen
-import com.yego.sabongbettingsystem.ui.admin.AdminHomeScreen
+import com.yego.sabongbettingsystem.ui.admin.*
 import com.yego.sabongbettingsystem.ui.login.LoginScreen
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.yego.sabongbettingsystem.ui.settings.PrinterSettingsScreen
+import com.yego.sabongbettingsystem.ui.teller.TellerModeScreen
 import com.yego.sabongbettingsystem.ui.teller.cashin.CashInScreen
 import com.yego.sabongbettingsystem.ui.teller.cashin.ReceiptScreen
 import com.yego.sabongbettingsystem.ui.teller.cashout.CashOutScreen
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
-import com.yego.sabongbettingsystem.ui.teller.cashin.PrintReceiptScreen
+import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
 
 @Composable
 fun AppNavigation() {
@@ -29,12 +28,14 @@ fun AppNavigation() {
 
     val navController = rememberNavController()
 
+    // determine start destination
     val startDestination = when {
-        token.isNullOrEmpty() -> "login"
-        role == "admin"       -> "admin_home"
-        app  == "cashin"      -> "cashin"
-        app  == "cashout"     -> "cashout"
-        else                  -> "login"
+        token.isNullOrEmpty() && role.isNullOrEmpty() -> "login"
+        role == "admin"                               -> "admin_home"
+        role == "teller" && app == "cashin"           -> "cashin"
+        role == "teller" && app == "cashout"          -> "cashout"
+        role == "teller"                              -> "teller_mode"
+        else                                          -> "login"
     }
 
     NavHost(
@@ -45,17 +46,35 @@ fun AppNavigation() {
         // ── Login ─────────────────────────────────────────
         composable("login") {
             LoginScreen(
-                onLoginSuccess = { role, app ->
-                    when {
-                        role == "admin"  -> navController.navigate("admin_home") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                        app == "cashin"  -> navController.navigate("cashin") {
-                            popUpTo("login") { inclusive = true }
-                        }
-                        app == "cashout" -> navController.navigate("cashout") {
-                            popUpTo("login") { inclusive = true }
-                        }
+                onAdminLogin  = {
+                    navController.navigate("admin_home") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onTellerLogin = {
+                    navController.navigate("teller_mode") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ── Teller mode selector ──────────────────────────
+        composable("teller_mode") {
+            TellerModeScreen(
+                onCashIn  = {
+                    navController.navigate("cashin") {
+                        popUpTo("teller_mode") { inclusive = true }
+                    }
+                },
+                onCashOut = {
+                    navController.navigate("cashout") {
+                        popUpTo("teller_mode") { inclusive = true }
+                    }
+                },
+                onLogout  = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
@@ -65,7 +84,8 @@ fun AppNavigation() {
         composable("admin_home") {
             AdminHomeScreen(
                 navController = navController,
-                onLogout = {
+                reverbViewModel = viewModel<ReverbViewModel>(),
+                onLogout      = {
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -78,7 +98,7 @@ fun AppNavigation() {
         }
 
         composable(
-            route = "admin_fight/{fightId}",
+            route     = "admin_fight/{fightId}",
             arguments = listOf(navArgument("fightId") { type = NavType.IntType })
         ) { backStackEntry ->
             AdminFightDetailScreen(
@@ -91,15 +111,14 @@ fun AppNavigation() {
             AdminFightHistoryScreen(navController = navController)
         }
 
+        // ── Teller Cash In ────────────────────────────────
         composable("cashin") {
-            val cashInEntry = remember(it) {
-                navController.getBackStackEntry("cashin")
-            }
-            val cashInViewModel = viewModel<CashInViewModel>(cashInEntry)
+            val cashInViewModel = viewModel<CashInViewModel>(it)
             CashInScreen(
                 navController   = navController,
                 cashInViewModel = cashInViewModel,
-                onLogout        = {
+                reverbViewModel = viewModel<ReverbViewModel>(),
+                onLogout = {
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -111,7 +130,7 @@ fun AppNavigation() {
             route     = "receipt/{reference}",
             arguments = listOf(navArgument("reference") { type = NavType.StringType })
         ) { backStackEntry ->
-            val cashInEntry = remember(backStackEntry) {
+            val cashInEntry     = remember(backStackEntry) {
                 navController.getBackStackEntry("cashin")
             }
             val cashInViewModel = viewModel<CashInViewModel>(cashInEntry)
@@ -122,16 +141,7 @@ fun AppNavigation() {
             )
         }
 
-        composable(
-            route     = "print/{reference}",
-            arguments = listOf(navArgument("reference") { type = NavType.StringType })
-        ) { backStackEntry ->
-            PrintReceiptScreen(
-                navController = navController,
-                reference     = backStackEntry.arguments?.getString("reference") ?: ""
-            )
-        }
-
+        // ── Teller Cash Out ───────────────────────────────
         composable("cashout") {
             CashOutScreen(
                 navController = navController,
@@ -141,6 +151,11 @@ fun AppNavigation() {
                     }
                 }
             )
+        }
+
+        // ── Settings ──────────────────────────────────────
+        composable("printer_settings") {
+            PrinterSettingsScreen(navController = navController)
         }
     }
 }

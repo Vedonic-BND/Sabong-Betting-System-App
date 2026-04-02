@@ -19,11 +19,15 @@ import androidx.navigation.NavController
 import com.yego.sabongbettingsystem.data.model.Fight
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.AdminViewModel
+import androidx.compose.runtime.DisposableEffect
+import com.yego.sabongbettingsystem.ui.components.WsStatusBadge
+import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminHomeScreen(
     navController: NavController,
+    reverbViewModel : ReverbViewModel,
     onLogout: () -> Unit
 ) {
     val context   = LocalContext.current
@@ -34,9 +38,37 @@ fun AdminHomeScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error     by viewModel.error.collectAsState()
 
+    val connected       by reverbViewModel.connected.collectAsState()
+    val reverbFight     by reverbViewModel.fightState.collectAsState()
+
     LaunchedEffect(Unit) {
         viewModel.loadCurrentFight(context)
+//        viewModel.startAutoRefresh(context)
+        reverbViewModel.connect()
     }
+
+    // reload fight from API whenever reverb fires a fight update
+    LaunchedEffect(reverbFight) {
+        if (reverbFight != null) {
+            viewModel.loadCurrentFight(context)
+        }
+    }
+
+//    DisposableEffect(Unit) {
+//        onDispose {
+////            viewModel.stopAutoRefresh()
+//            reverbViewModel.disconnect()
+//        }
+//    }
+
+    // use reverb data if available, fallback to loaded fight
+    val displayFight = reverbFight?.let { r ->
+        fight?.copy(
+            status      = r.status,
+            meron_total = r.meronTotal.toString(),
+            wala_total  = r.walaTotal.toString(),
+        )
+    } ?: fight
 
     Scaffold(
         topBar = {
@@ -52,11 +84,17 @@ fun AdminHomeScreen(
                     }
                 },
                 actions = {
+                    WsStatusBadge(connected = connected)
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(onClick = { navController.navigate("printer_settings") }) {
+                        Icon(Icons.Default.AdfScanner, contentDescription = "Printer Settings")
+                    }
                     IconButton(onClick = {
                         viewModel.logout(context, onLogout)
                     }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout")
                     }
+
                 }
             )
         }
@@ -117,11 +155,11 @@ fun AdminHomeScreen(
                             verticalAlignment     = Alignment.CenterVertically
                         ) {
                             Text(
-                                text       = "Fight #${fight!!.fight_number}",
+                                text       = "Fight #${displayFight!!.fight_number}",
                                 fontSize   = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            StatusChip(status = fight!!.status)
+                            StatusChip(status = displayFight!!.status)
                         }
 
                         Row(
@@ -130,21 +168,21 @@ fun AdminHomeScreen(
                         ) {
                             SideCard(
                                 label    = "MERON",
-                                amount   = fight!!.meron_total,
+                                amount   = displayFight!!.meron_total,
                                 color    = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.weight(1f)
                             )
                             SideCard(
                                 label    = "WALA",
-                                amount   = fight!!.wala_total,
+                                amount   = displayFight!!.wala_total,
                                 color    = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.weight(1f)
                             )
                         }
 
-                        if (fight!!.status != "done" && fight!!.status != "cancelled") {
+                        if (displayFight!!.status != "done" && displayFight!!.status != "cancelled") {
                             FightActionButtons(
-                                fight         = fight!!,
+                                fight         = displayFight!!,
                                 viewModel     = viewModel,
                                 context       = context,
                                 navController = navController

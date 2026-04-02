@@ -90,4 +90,21 @@ class CashInViewModel : ViewModel() {
             onDone()
         }
     }
+
+    //autorefresh
+    private var refreshJob: kotlinx.coroutines.Job? = null
+
+    fun startAutoRefresh(context: Context) {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(5000)
+                loadCurrentFight(context)
+            }
+        }
+    }
+
+    fun stopAutoRefresh() {
+        refreshJob?.cancel()
+    }
 }

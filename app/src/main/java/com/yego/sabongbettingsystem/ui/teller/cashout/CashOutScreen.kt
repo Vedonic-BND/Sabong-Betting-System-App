@@ -20,12 +20,16 @@ import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.CashOutViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.AdfScanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import com.yego.sabongbettingsystem.data.printer.BluetoothPermissionHelper
 import com.yego.sabongbettingsystem.data.printer.BluetoothPrinterService
 import kotlinx.coroutines.flow.first
+import androidx.compose.material.icons.filled.QrCodeScanner
+import com.yego.sabongbettingsystem.ui.components.QrScannerView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +52,8 @@ fun CashOutScreen(
     var isPrinting   by remember { mutableStateOf(false) }
     var printError   by remember { mutableStateOf<String?>(null) }
     var printSuccess by remember { mutableStateOf(false) }
+
+    var showScanner by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -135,6 +141,9 @@ fun CashOutScreen(
                     }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout")
                     }
+                    IconButton(onClick = { navController.navigate("printer_settings") }) {
+                        Icon(Icons.Default.AdfScanner, contentDescription = "Printer Settings")
+                    }
                 }
             )
         }
@@ -184,11 +193,29 @@ fun CashOutScreen(
 
             // ── Reference input ───────────────────────────
             Text(
-                text       = "Enter Reference Number",
+                text       = "Enter or Scan Reference Number",
                 style      = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
 
+            // ── QR Scanner ────────────────────────────────
+            if (showScanner) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(16.dp)
+                ) {
+                    QrScannerView(
+                        onScanned = { scannedValue ->
+                            reference   = scannedValue
+                            showScanner = false
+                            viewModel.lookupPayout(context, scannedValue)
+                        },
+                        onDismiss = { showScanner = false }
+                    )
+                }
+            }
+
+            // ── Manual input ──────────────────────────────
             OutlinedTextField(
                 value         = reference,
                 onValueChange = {
@@ -210,20 +237,43 @@ fun CashOutScreen(
                 }
             )
 
-            Button(
-                onClick  = { viewModel.lookupPayout(context, reference) },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape    = RoundedCornerShape(12.dp),
-                enabled  = reference.isNotBlank() && !isLoading
+            // ── Scan and lookup buttons ───────────────────
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier    = Modifier.size(20.dp),
-                        color       = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                OutlinedButton(
+                    onClick  = {
+                        showScanner  = !showScanner
+                        viewModel.clearAll()
+                    },
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.QrCodeScanner,
+                        contentDescription = null,
+                        modifier           = Modifier.size(18.dp)
                     )
-                } else {
-                    Text("Look Up", fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (showScanner) "Close Scanner" else "Scan QR")
+                }
+
+                Button(
+                    onClick  = { viewModel.lookupPayout(context, reference) },
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape    = RoundedCornerShape(12.dp),
+                    enabled  = reference.isNotBlank() && !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier    = Modifier.size(20.dp),
+                            color       = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Look Up", fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 

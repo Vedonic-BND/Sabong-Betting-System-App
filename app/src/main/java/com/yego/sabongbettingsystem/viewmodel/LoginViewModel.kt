@@ -11,10 +11,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 sealed class LoginState {
-    object Idle : LoginState()
+    object Idle    : LoginState()
     object Loading : LoginState()
-    data class Success(val role: String, val app: String) : LoginState()
-    data class Error(val message: String) : LoginState()
+    data class SuccessAdmin(val name: String)  : LoginState()
+    data class SuccessTeller(val name: String) : LoginState()
+    data class Error(val message: String)      : LoginState()
 }
 
 class LoginViewModel : ViewModel() {
@@ -22,12 +23,7 @@ class LoginViewModel : ViewModel() {
     private val _state = MutableStateFlow<LoginState>(LoginState.Idle)
     val state: StateFlow<LoginState> = _state
 
-    fun login(
-        context: Context,
-        username: String,
-        password: String,
-        app: String
-    ) {
+    fun login(context: Context, username: String, password: String) {
         if (username.isBlank() || password.isBlank()) {
             _state.value = LoginState.Error("Please fill in all fields.")
             return
@@ -35,24 +31,35 @@ class LoginViewModel : ViewModel() {
 
         viewModelScope.launch {
             _state.value = LoginState.Loading
-
             try {
                 val response = RetrofitClient.api.login(
-                    LoginRequest(username, password, app)
+                    LoginRequest(username, password)
                 )
 
                 if (response.isSuccessful) {
                     val body = response.body()!!
-                    UserStore(context).save(
-                        token = body.token,
-                        name  = body.user.name,
-                        role  = body.user.role,
-                        app   = body.user.app
-                    )
-                    _state.value = LoginState.Success(
-                        role = body.user.role,
-                        app  = body.user.app
-                    )
+                    val store = UserStore(context)
+
+                    when (body.role) {
+                        "admin" -> {
+                            store.saveAdmin(
+                                token = body.token!!,
+                                name  = body.user.name
+                            )
+                            _state.value = LoginState.SuccessAdmin(body.user.name)
+                        }
+                        "teller" -> {
+                            store.saveTeller(
+                                cashInToken  = body.cashin_token!!,
+                                cashOutToken = body.cashout_token!!,
+                                name         = body.user.name
+                            )
+                            _state.value = LoginState.SuccessTeller(body.user.name)
+                        }
+                        else -> {
+                            _state.value = LoginState.Error("Access denied.")
+                        }
+                    }
                 } else {
                     _state.value = LoginState.Error("Invalid credentials.")
                 }

@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalContext
 import com.yego.sabongbettingsystem.data.printer.BluetoothPermissionHelper
 import com.yego.sabongbettingsystem.data.printer.BluetoothPrinterService
+import com.yego.sabongbettingsystem.data.store.PrinterStore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -194,6 +195,9 @@ fun ReceiptScreen(
                 var isPrinting   by remember { mutableStateOf(false) }
                 val context = LocalContext.current
 
+                val printerStore = remember { PrinterStore(context) }
+                val printerAddress by printerStore.printerAddress.collectAsState(initial = null)
+
                 val launcher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestMultiplePermissions()
                 ) { permissions ->
@@ -208,20 +212,22 @@ fun ReceiptScreen(
 
                 LaunchedEffect(isPrinting) {
                     if (isPrinting) {
-                        val ctx = context  // capture context before coroutine
+                        val ctx  = context
+                        val addr = printerAddress
                         val error = kotlinx.coroutines.withContext(
                             kotlinx.coroutines.Dispatchers.IO
                         ) {
                             BluetoothPrinterService.printReceipt(
-                                context     = ctx,
-                                fightNumber = receipt.fight_number,
-                                side        = receipt.side,
-                                amount      = receipt.amount,
-                                reference   = receipt.reference,
-                                teller      = receipt.teller,
-                                date        = receipt.date,
-                                time        = receipt.time,
-                                qrData      = receipt.reference
+                                context        = ctx,
+                                fightNumber    = receipt.fight_number,
+                                side           = receipt.side,
+                                amount         = receipt.amount,
+                                reference      = receipt.reference,
+                                teller         = receipt.teller,
+                                date           = receipt.date,
+                                time           = receipt.time,
+                                qrData         = receipt.reference,
+                                printerAddress = addr
                             )
                         }
                         isPrinting   = false

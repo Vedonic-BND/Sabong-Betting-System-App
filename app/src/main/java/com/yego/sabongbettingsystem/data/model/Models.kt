@@ -2,12 +2,14 @@ package com.yego.sabongbettingsystem.data.model
 
 data class LoginRequest(
     val username: String,
-    val password: String,
-    val app: String
+    val password: String
 )
 
 data class LoginResponse(
+    val role: String,
     val token: String,
+    val cashin_token: String?,
+    val cashout_token: String?,
     val user: UserData
 )
 
@@ -16,6 +18,10 @@ data class UserData(
     val name: String,
     val role: String,
     val app: String
+)
+
+data class TellerModeSelection(
+    val mode: String // "cashin" or "cashout"
 )
 
 data class Fight(

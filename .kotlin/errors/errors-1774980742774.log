@@ -1,0 +1,316 @@
+kotlin version: 2.2.10
+error message: java.lang.RuntimeException: Exception while generating code for:
+FUN name:LoginScreen visibility:public modality:FINAL returnType:kotlin.Unit
+  VALUE_PARAMETER kind:Regular name:onLoginSuccess index:0 type:kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit>
+  annotations:
+    Composable
+  BLOCK_BODY
+    VAR name:context type:android.content.Context [val]
+      CALL 'public final fun <get-current> (): T of androidx.compose.runtime.CompositionLocal [inline] declared in androidx.compose.runtime.CompositionLocal' type=android.content.Context origin=GET_PROPERTY
+        ARG <this>: TYPE_OP type=androidx.compose.runtime.CompositionLocal<T of androidx.compose.runtime.CompositionLocal> origin=IMPLICIT_CAST typeOperand=androidx.compose.runtime.CompositionLocal<T of androidx.compose.runtime.CompositionLocal>
+          CALL 'public final fun <get-LocalContext> (): androidx.compose.runtime.ProvidableCompositionLocal<android.content.Context> declared in androidx.compose.ui.platform.AndroidCompositionLocals_androidKt' type=androidx.compose.runtime.ProvidableCompositionLocal<android.content.Context> origin=GET_PROPERTY
+    VAR name:viewModel type:com.yego.sabongbettingsystem.viewmodel.LoginViewModel [val]
+      TYPE_OP type=com.yego.sabongbettingsystem.viewmodel.LoginViewModel origin=IMPLICIT_CAST typeOperand=com.yego.sabongbettingsystem.viewmodel.LoginViewModel
+        CALL 'public final fun viewModel$default <VM> (viewModelStoreOwner: androidx.lifecycle.ViewModelStoreOwner?, key: kotlin.String?, factory: androidx.lifecycle.ViewModelProvider.Factory?, extras: androidx.lifecycle.viewmodel.CreationExtras?, $mask0: kotlin.Int, $handler: kotlin.Any?): VM of androidx.lifecycle.viewmodel.compose.ViewModelKt.viewModel$default [inline] declared in androidx.lifecycle.viewmodel.compose.ViewModelKt' type=VM of androidx.lifecycle.viewmodel.compose.ViewModelKt.viewModel$default origin=DEFAULT_DISPATCH_CALL
+          TYPE_ARG VM: com.yego.sabongbettingsystem.viewmodel.LoginViewModel
+          ARG viewModelStoreOwner: COMPOSITE type=androidx.lifecycle.ViewModelStoreOwner? origin=DEFAULT_VALUE
+            CONST Null type=androidx.lifecycle.ViewModelStoreOwner? value=null
+          ARG key: COMPOSITE type=kotlin.String? origin=DEFAULT_VALUE
+            CONST Null type=kotlin.String? value=null
+          ARG factory: COMPOSITE type=androidx.lifecycle.ViewModelProvider.Factory? origin=DEFAULT_VALUE
+            CONST Null type=androidx.lifecycle.ViewModelProvider.Factory? value=null
+          ARG extras: COMPOSITE type=androidx.lifecycle.viewmodel.CreationExtras? origin=DEFAULT_VALUE
+            CONST Null type=androidx.lifecycle.viewmodel.CreationExtras? value=null
+          ARG $mask0: CONST Int type=kotlin.Int value=15
+          ARG $handler: CONST Null type=kotlin.Any? value=null
+    VAR PROPERTY_DELEGATE name:state$delegate type:androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> [val]
+      TYPE_OP type=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=IMPLICIT_CAST typeOperand=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState>
+        CALL 'public final fun collectAsState$default <T> (<this>: kotlinx.coroutines.flow.StateFlow<T of androidx.compose.runtime.SnapshotStateKt.collectAsState$default>, context: kotlin.coroutines.CoroutineContext?, $mask0: kotlin.Int, $handler: kotlin.Any?): androidx.compose.runtime.State<T of androidx.compose.runtime.SnapshotStateKt.collectAsState$default> declared in androidx.compose.runtime.SnapshotStateKt' type=androidx.compose.runtime.State<T of androidx.compose.runtime.SnapshotStateKt.collectAsState$default> origin=DEFAULT_DISPATCH_CALL
+          TYPE_ARG T: com.yego.sabongbettingsystem.viewmodel.LoginState
+          ARG <this>: CALL 'public final fun <get-state> (): kotlinx.coroutines.flow.StateFlow<com.yego.sabongbettingsystem.viewmodel.LoginState> declared in com.yego.sabongbettingsystem.viewmodel.LoginViewModel' type=kotlinx.coroutines.flow.StateFlow<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=GET_PROPERTY
+            ARG <this>: GET_VAR 'val viewModel: com.yego.sabongbettingsystem.viewmodel.LoginViewModel [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=com.yego.sabongbettingsystem.viewmodel.LoginViewModel origin=null
+          ARG context: COMPOSITE type=kotlin.coroutines.CoroutineContext? origin=DEFAULT_VALUE
+            CONST Null type=kotlin.coroutines.CoroutineContext? value=null
+          ARG $mask0: CONST Int type=kotlin.Int value=1
+          ARG $handler: CONST Null type=kotlin.Any? value=null
+    VAR PROPERTY_DELEGATE name:username$delegate type:androidx.compose.runtime.MutableState<kotlin.String> [val]
+      CALL 'public final fun remember <T> (calculation: @[DisallowComposableCalls] kotlin.Function0<T of androidx.compose.runtime.ComposablesKt.remember>): T of androidx.compose.runtime.ComposablesKt.remember [inline] declared in androidx.compose.runtime.ComposablesKt' type=androidx.compose.runtime.MutableState<kotlin.String> origin=null
+        TYPE_ARG T: androidx.compose.runtime.MutableState<kotlin.String>
+        ARG calculation: BLOCK type=kotlin.Function0<androidx.compose.runtime.MutableState<kotlin.String>> origin=LAMBDA
+          COMPOSITE type=kotlin.Unit origin=null
+          FUNCTION_REFERENCE 'private final fun LoginScreen$lambda$1 (): androidx.compose.runtime.MutableState<kotlin.String> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt' type=kotlin.Function0<androidx.compose.runtime.MutableState<kotlin.String>> origin=INLINE_LAMBDA reflectionTarget=null
+    VAR PROPERTY_DELEGATE name:password$delegate type:androidx.compose.runtime.MutableState<kotlin.String> [val]
+      CALL 'public final fun remember <T> (calculation: @[DisallowComposableCalls] kotlin.Function0<T of androidx.compose.runtime.ComposablesKt.remember>): T of androidx.compose.runtime.ComposablesKt.remember [inline] declared in androidx.compose.runtime.ComposablesKt' type=androidx.compose.runtime.MutableState<kotlin.String> origin=null
+        TYPE_ARG T: androidx.compose.runtime.MutableState<kotlin.String>
+        ARG calculation: BLOCK type=kotlin.Function0<androidx.compose.runtime.MutableState<kotlin.String>> origin=LAMBDA
+          COMPOSITE type=kotlin.Unit origin=null
+          FUNCTION_REFERENCE 'private final fun LoginScreen$lambda$4 (): androidx.compose.runtime.MutableState<kotlin.String> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt' type=kotlin.Function0<androidx.compose.runtime.MutableState<kotlin.String>> origin=INLINE_LAMBDA reflectionTarget=null
+    VAR PROPERTY_DELEGATE name:showPassword$delegate type:androidx.compose.runtime.MutableState<kotlin.Boolean> [val]
+      CALL 'public final fun remember <T> (calculation: @[DisallowComposableCalls] kotlin.Function0<T of androidx.compose.runtime.ComposablesKt.remember>): T of androidx.compose.runtime.ComposablesKt.remember [inline] declared in androidx.compose.runtime.ComposablesKt' type=androidx.compose.runtime.MutableState<kotlin.Boolean> origin=null
+        TYPE_ARG T: androidx.compose.runtime.MutableState<kotlin.Boolean>
+        ARG calculation: BLOCK type=kotlin.Function0<androidx.compose.runtime.MutableState<kotlin.Boolean>> origin=LAMBDA
+          COMPOSITE type=kotlin.Unit origin=null
+          FUNCTION_REFERENCE 'private final fun LoginScreen$lambda$7 (): androidx.compose.runtime.MutableState<kotlin.Boolean> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt' type=kotlin.Function0<androidx.compose.runtime.MutableState<kotlin.Boolean>> origin=INLINE_LAMBDA reflectionTarget=null
+    VAR PROPERTY_DELEGATE name:selectedApp$delegate type:androidx.compose.runtime.MutableState<kotlin.String> [val]
+      CALL 'public final fun remember <T> (calculation: @[DisallowComposableCalls] kotlin.Function0<T of androidx.compose.runtime.ComposablesKt.remember>): T of androidx.compose.runtime.ComposablesKt.remember [inline] declared in androidx.compose.runtime.ComposablesKt' type=androidx.compose.runtime.MutableState<kotlin.String> origin=null
+        TYPE_ARG T: androidx.compose.runtime.MutableState<kotlin.String>
+        ARG calculation: BLOCK type=kotlin.Function0<androidx.compose.runtime.MutableState<kotlin.String>> origin=LAMBDA
+          COMPOSITE type=kotlin.Unit origin=null
+          FUNCTION_REFERENCE 'private final fun LoginScreen$lambda$10 (): androidx.compose.runtime.MutableState<kotlin.String> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt' type=kotlin.Function0<androidx.compose.runtime.MutableState<kotlin.String>> origin=INLINE_LAMBDA reflectionTarget=null
+    VAR name:apps type:kotlin.collections.List<kotlin.Pair<kotlin.String, kotlin.String>> [val]
+      CALL 'public final fun listOf <T> (vararg elements: T of kotlin.collections.CollectionsKt.listOf): kotlin.collections.List<T of kotlin.collections.CollectionsKt.listOf> declared in kotlin.collections.CollectionsKt' type=kotlin.collections.List<kotlin.Pair<kotlin.String, kotlin.String>> origin=null
+        TYPE_ARG T: kotlin.Pair<kotlin.String, kotlin.String>
+        ARG elements: BLOCK type=kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> origin=null
+          VAR IR_TEMPORARY_VARIABLE name:tmp0 type:kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> [val]
+            CALL 'public final fun arrayOfNulls <T> (size: kotlin.Int): kotlin.Array<T of kotlin.arrayOfNulls?> declared in kotlin' type=kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> origin=null
+              TYPE_ARG T: kotlin.Pair<kotlin.String, kotlin.String>
+              ARG size: CONST Int type=kotlin.Int value=3
+          CALL 'public final fun set (index: kotlin.Int, value: T of kotlin.Array): kotlin.Unit [operator] declared in kotlin.Array' type=kotlin.Unit origin=null
+            ARG <this>: GET_VAR 'val tmp0: kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> origin=null
+            ARG index: CONST Int type=kotlin.Int value=0
+            ARG value: CALL 'public final fun to <A, B> (<this>: A of kotlin.TuplesKt.to, that: B of kotlin.TuplesKt.to): kotlin.Pair<A of kotlin.TuplesKt.to, B of kotlin.TuplesKt.to> [infix] declared in kotlin.TuplesKt' type=kotlin.Pair<kotlin.String, kotlin.String> origin=null
+              TYPE_ARG A: kotlin.String
+              TYPE_ARG B: kotlin.String
+              ARG <this>: CONST String type=kotlin.String value="admin"
+              ARG that: CONST String type=kotlin.String value="Admin"
+          CALL 'public final fun set (index: kotlin.Int, value: T of kotlin.Array): kotlin.Unit [operator] declared in kotlin.Array' type=kotlin.Unit origin=null
+            ARG <this>: GET_VAR 'val tmp0: kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> origin=null
+            ARG index: CONST Int type=kotlin.Int value=1
+            ARG value: CALL 'public final fun to <A, B> (<this>: A of kotlin.TuplesKt.to, that: B of kotlin.TuplesKt.to): kotlin.Pair<A of kotlin.TuplesKt.to, B of kotlin.TuplesKt.to> [infix] declared in kotlin.TuplesKt' type=kotlin.Pair<kotlin.String, kotlin.String> origin=null
+              TYPE_ARG A: kotlin.String
+              TYPE_ARG B: kotlin.String
+              ARG <this>: CONST String type=kotlin.String value="cashin"
+              ARG that: CONST String type=kotlin.String value="Cash In"
+          CALL 'public final fun set (index: kotlin.Int, value: T of kotlin.Array): kotlin.Unit [operator] declared in kotlin.Array' type=kotlin.Unit origin=null
+            ARG <this>: GET_VAR 'val tmp0: kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> origin=null
+            ARG index: CONST Int type=kotlin.Int value=2
+            ARG value: CALL 'public final fun to <A, B> (<this>: A of kotlin.TuplesKt.to, that: B of kotlin.TuplesKt.to): kotlin.Pair<A of kotlin.TuplesKt.to, B of kotlin.TuplesKt.to> [infix] declared in kotlin.TuplesKt' type=kotlin.Pair<kotlin.String, kotlin.String> origin=null
+              TYPE_ARG A: kotlin.String
+              TYPE_ARG B: kotlin.String
+              ARG <this>: CONST String type=kotlin.String value="cashout"
+              ARG that: CONST String type=kotlin.String value="Cash Out"
+          GET_VAR 'val tmp0: kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.String>> origin=null
+    CALL 'public final fun LaunchedEffect (key1: kotlin.Any?, block: @[ExtensionFunctionType] kotlin.coroutines.SuspendFunction1<kotlinx.coroutines.CoroutineScope, kotlin.Unit>): kotlin.Unit declared in androidx.compose.runtime.EffectsKt' type=kotlin.Unit origin=null
+      ARG key1: CALL 'private final fun LoginScreen$lambda$0 ($state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState>): com.yego.sabongbettingsystem.viewmodel.LoginState declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt' type=com.yego.sabongbettingsystem.viewmodel.LoginState origin=GET_LOCAL_PROPERTY
+        ARG $state$delegate: GET_VAR 'val state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=null
+      ARG block: BLOCK type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+        CLASS SUSPEND_LAMBDA CLASS name:<no name provided> modality:FINAL visibility:public/*package*/ superTypes:[kotlin.coroutines.jvm.internal.SuspendLambda; kotlin.jvm.functions.Function2<kotlinx.coroutines.CoroutineScope, kotlin.coroutines.Continuation<kotlin.Unit>?, kotlin.Any?>]
+          thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>
+          FIELD name:label type:kotlin.Int visibility:public/*package*/
+          CONSTRUCTOR SUSPEND_LAMBDA visibility:public/*package*/ returnType:com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> [primary]
+            VALUE_PARAMETER BOUND_VALUE_PARAMETER kind:Regular name:$onLoginSuccess index:0 type:kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit>
+            VALUE_PARAMETER BOUND_VALUE_PARAMETER kind:Regular name:$viewModel index:1 type:com.yego.sabongbettingsystem.viewmodel.LoginViewModel
+            VALUE_PARAMETER BOUND_VALUE_PARAMETER kind:Regular name:$state$delegate index:2 type:androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState>
+            VALUE_PARAMETER kind:Regular name:$completion index:3 type:kotlin.coroutines.Continuation<com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>>?
+            BLOCK_BODY
+              SET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$onLoginSuccess type:kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=kotlin.Unit origin=INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE
+                receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                value: GET_VAR '$onLoginSuccess: kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.<init>' type=kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> origin=null
+              SET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$viewModel type:com.yego.sabongbettingsystem.viewmodel.LoginViewModel visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=kotlin.Unit origin=INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE
+                receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                value: GET_VAR '$viewModel: com.yego.sabongbettingsystem.viewmodel.LoginViewModel declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.<init>' type=com.yego.sabongbettingsystem.viewmodel.LoginViewModel origin=null
+              SET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$state$delegate type:androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=kotlin.Unit origin=INITIALIZER_OF_FIELD_FOR_CAPTURED_VALUE
+                receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                value: GET_VAR '$state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.<init>' type=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=null
+              DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> (arity: kotlin.Int, $completion: kotlin.coroutines.Continuation<kotlin.Any?>?) declared in kotlin.coroutines.jvm.internal.SuspendLambda'
+                ARG arity: CONST Int type=kotlin.Int value=2
+                ARG $completion: GET_VAR '$completion: kotlin.coroutines.Continuation<com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>>? declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.<init>' type=kotlin.coroutines.Continuation<com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>>? origin=null
+              BLOCK type=kotlin.Unit origin=null
+          FUN name:invokeSuspend visibility:public modality:FINAL returnType:kotlin.Any?
+            VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>
+            VALUE_PARAMETER kind:Regular name:$result index:1 type:kotlin.Result<kotlin.Any?>
+            overridden:
+              protected abstract fun invokeSuspend ($result: kotlin.Result<kotlin.Any?>): kotlin.Any? declared in kotlin.coroutines.jvm.internal.SuspendLambda
+            BLOCK_BODY
+              WHEN type=kotlin.Unit origin=IF
+                BRANCH
+                  if: TYPE_OP type=kotlin.Boolean origin=INSTANCEOF typeOperand=com.yego.sabongbettingsystem.viewmodel.LoginState.Success
+                    CALL 'public final fun access$LoginScreen$lambda$0 ($state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState>): com.yego.sabongbettingsystem.viewmodel.LoginState declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt' type=com.yego.sabongbettingsystem.viewmodel.LoginState origin=GET_LOCAL_PROPERTY
+                      ARG $state$delegate: GET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$state$delegate type:androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=null
+                        receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invokeSuspend' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                  then: BLOCK type=kotlin.Unit origin=null
+                    VAR name:s type:com.yego.sabongbettingsystem.viewmodel.LoginState.Success [val]
+                      BLOCK type=com.yego.sabongbettingsystem.viewmodel.LoginState.Success origin=null
+                        VAR IR_TEMPORARY_VARIABLE name:tmp0 type:kotlin.Any? [val]
+                          CALL 'public final fun access$LoginScreen$lambda$0 ($state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState>): com.yego.sabongbettingsystem.viewmodel.LoginState declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt' type=com.yego.sabongbettingsystem.viewmodel.LoginState origin=GET_LOCAL_PROPERTY
+                            ARG $state$delegate: GET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$state$delegate type:androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=null
+                              receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invokeSuspend' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                        CALL 'public final fun checkNotNull (object: kotlin.Any?, message: kotlin.String): kotlin.Unit declared in kotlin.jvm.internal.Intrinsics' type=kotlin.Unit origin=null
+                          ARG object: GET_VAR 'val tmp0: kotlin.Any? [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invokeSuspend' type=kotlin.Any? origin=null
+                          ARG message: CONST String type=kotlin.String value="null cannot be cast to non-null type com.yego.sabongbettingsystem.viewmodel.LoginState.Success"
+                        TYPE_OP type=com.yego.sabongbettingsystem.viewmodel.LoginState.Success? origin=CAST typeOperand=com.yego.sabongbettingsystem.viewmodel.LoginState.Success?
+                          GET_VAR 'val tmp0: kotlin.Any? [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invokeSuspend' type=kotlin.Any? origin=null
+                    CALL 'public abstract fun invoke (p1: P1 of kotlin.Function2, p2: P2 of kotlin.Function2): R of kotlin.Function2 [operator] declared in kotlin.Function2' type=kotlin.Unit origin=INVOKE
+                      ARG <this>: GET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$onLoginSuccess type:kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> origin=null
+                        receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invokeSuspend' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                      ARG p1: CALL 'public final fun <get-role> (): kotlin.String declared in com.yego.sabongbettingsystem.viewmodel.LoginState.Success' type=kotlin.String origin=GET_PROPERTY
+                        ARG <this>: GET_VAR 'val s: com.yego.sabongbettingsystem.viewmodel.LoginState.Success [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invokeSuspend' type=com.yego.sabongbettingsystem.viewmodel.LoginState.Success origin=null
+                      ARG p2: CALL 'public final fun <get-app> (): kotlin.String declared in com.yego.sabongbettingsystem.viewmodel.LoginState.Success' type=kotlin.String origin=GET_PROPERTY
+                        ARG <this>: GET_VAR 'val s: com.yego.sabongbettingsystem.viewmodel.LoginState.Success [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invokeSuspend' type=com.yego.sabongbettingsystem.viewmodel.LoginState.Success origin=null
+                    CALL 'public final fun resetState (): kotlin.Unit declared in com.yego.sabongbettingsystem.viewmodel.LoginViewModel' type=kotlin.Unit origin=null
+                      ARG <this>: GET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$viewModel type:com.yego.sabongbettingsystem.viewmodel.LoginViewModel visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=com.yego.sabongbettingsystem.viewmodel.LoginViewModel origin=null
+                        receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invokeSuspend' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+          FUN name:create visibility:public modality:FINAL returnType:kotlin.coroutines.Continuation<kotlin.Unit>
+            VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>
+            VALUE_PARAMETER kind:Regular name:value index:1 type:kotlin.Any?
+            VALUE_PARAMETER kind:Regular name:$completion index:2 type:kotlin.coroutines.Continuation<kotlin.Nothing>
+            overridden:
+              public open fun create (value: kotlin.Any?, $completion: kotlin.coroutines.Continuation<kotlin.Nothing>): kotlin.coroutines.Continuation<kotlin.Unit> declared in kotlin.coroutines.jvm.internal.SuspendLambda
+            BLOCK_BODY
+              RETURN type=kotlin.Nothing from='public final fun create (value: kotlin.Any?, $completion: kotlin.coroutines.Continuation<kotlin.Nothing>): kotlin.coroutines.Continuation<kotlin.Unit> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>'
+                CONSTRUCTOR_CALL 'public/*package*/ constructor <init> ($onLoginSuccess: kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit>, $viewModel: com.yego.sabongbettingsystem.viewmodel.LoginViewModel, $state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState>, $completion: kotlin.coroutines.Continuation<com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>>?) [primary] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                  ARG $onLoginSuccess: GET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$onLoginSuccess type:kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> origin=null
+                    receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.create' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                  ARG $viewModel: GET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$viewModel type:com.yego.sabongbettingsystem.viewmodel.LoginViewModel visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=com.yego.sabongbettingsystem.viewmodel.LoginViewModel origin=null
+                    receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.create' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                  ARG $state$delegate: GET_FIELD 'FIELD FIELD_FOR_CAPTURED_VALUE name:$state$delegate type:androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> visibility:public/*package*/ [final] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=null
+                    receiver: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.create' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                  ARG $completion: GET_VAR '$completion: kotlin.coroutines.Continuation<kotlin.Nothing> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.create' type=kotlin.coroutines.Continuation<kotlin.Nothing> origin=null
+          FUN name:invoke visibility:public modality:FINAL returnType:kotlin.Any?
+            VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>
+            VALUE_PARAMETER kind:Regular name:p1 index:1 type:kotlinx.coroutines.CoroutineScope
+            VALUE_PARAMETER kind:Regular name:p2 index:2 type:kotlin.coroutines.Continuation<kotlin.Unit>?
+            overridden:
+              public abstract fun invoke (p1: P1 of kotlin.jvm.functions.Function2, p2: P2 of kotlin.jvm.functions.Function2): R of kotlin.jvm.functions.Function2 declared in kotlin.jvm.functions.Function2
+            BLOCK_BODY
+              RETURN type=kotlin.Nothing from='public final fun invoke (p1: kotlinx.coroutines.CoroutineScope, p2: kotlin.coroutines.Continuation<kotlin.Unit>?): kotlin.Any? declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>'
+                CALL 'public final fun invokeSuspend ($result: kotlin.Result<kotlin.Any?>): kotlin.Any? declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=kotlin.Any? origin=null
+                  ARG <this>: TYPE_OP type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=IMPLICIT_CAST typeOperand=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>
+                    CALL 'public final fun create (value: kotlin.Any?, $completion: kotlin.coroutines.Continuation<kotlin.Nothing>): kotlin.coroutines.Continuation<kotlin.Unit> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=kotlin.coroutines.Continuation<kotlin.Unit> origin=null
+                      ARG <this>: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invoke' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                      ARG value: GET_VAR 'p1: kotlinx.coroutines.CoroutineScope declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invoke' type=kotlinx.coroutines.CoroutineScope origin=null
+                      ARG $completion: GET_VAR 'p2: kotlin.coroutines.Continuation<kotlin.Unit>? declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invoke' type=kotlin.coroutines.Continuation<kotlin.Unit>? origin=null
+                  ARG $result: CALL 'public final fun <unsafe-coerce> <T, R> (v: T of kotlin.jvm.internal.<unsafe-coerce>): R of kotlin.jvm.internal.<unsafe-coerce> declared in kotlin.jvm.internal' type=kotlin.Result<kotlin.Any?> origin=null
+                    TYPE_ARG T: kotlin.Any?
+                    TYPE_ARG R: kotlin.Result<kotlin.Any?>
+                    ARG v: GET_FIELD 'FIELD FIELD_FOR_OBJECT_INSTANCE name:INSTANCE type:kotlin.Unit visibility:public [final,static] declared in kotlin.Unit' type=kotlin.Unit origin=null
+          FIELD FIELD_FOR_CAPTURED_VALUE name:$onLoginSuccess type:kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> visibility:public/*package*/ [final]
+          FIELD FIELD_FOR_CAPTURED_VALUE name:$viewModel type:com.yego.sabongbettingsystem.viewmodel.LoginViewModel visibility:public/*package*/ [final]
+          FIELD FIELD_FOR_CAPTURED_VALUE name:$state$delegate type:androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> visibility:public/*package*/ [final]
+          FUN BRIDGE name:invoke visibility:public modality:OPEN returnType:kotlin.Any?
+            VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> index:0 type:com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>
+            VALUE_PARAMETER BRIDGE kind:Regular name:p1 index:1 type:kotlin.Any?
+            VALUE_PARAMETER BRIDGE kind:Regular name:p2 index:2 type:kotlin.Any?
+            EXPRESSION_BODY
+              RETURN type=kotlin.Nothing from='public open fun invoke (p1: kotlin.Any?, p2: kotlin.Any?): kotlin.Any? declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>'
+                CALL 'public final fun invoke (p1: kotlinx.coroutines.CoroutineScope, p2: kotlin.coroutines.Continuation<kotlin.Unit>?): kotlin.Any? declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=kotlin.Any? origin=BRIDGE_DELEGATION
+                  ARG <this>: GET_VAR '<this>: com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invoke' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+                  ARG p1: TYPE_OP type=kotlinx.coroutines.CoroutineScope origin=IMPLICIT_CAST typeOperand=kotlinx.coroutines.CoroutineScope
+                    GET_VAR 'p1: kotlin.Any? declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invoke' type=kotlin.Any? origin=null
+                  ARG p2: TYPE_OP type=kotlin.coroutines.Continuation<*> origin=IMPLICIT_CAST typeOperand=kotlin.coroutines.Continuation<*>
+                    GET_VAR 'p2: kotlin.Any? declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>.invoke' type=kotlin.Any? origin=null
+        CONSTRUCTOR_CALL 'public/*package*/ constructor <init> ($onLoginSuccess: kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit>, $viewModel: com.yego.sabongbettingsystem.viewmodel.LoginViewModel, $state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState>, $completion: kotlin.coroutines.Continuation<com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>>?) [primary] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided>' type=com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen.<no name provided> origin=null
+          ARG $onLoginSuccess: GET_VAR 'onLoginSuccess: kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=kotlin.Function2<@[ParameterName(name = "role")] kotlin.String, @[ParameterName(name = "app")] kotlin.String, kotlin.Unit> origin=null
+          ARG $viewModel: GET_VAR 'val viewModel: com.yego.sabongbettingsystem.viewmodel.LoginViewModel [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=com.yego.sabongbettingsystem.viewmodel.LoginViewModel origin=null
+          ARG $state$delegate: GET_VAR 'val state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=null
+          ARG $completion: CONST Null type=kotlin.Nothing? value=null
+    CALL 'public final fun Box$default (modifier: androidx.compose.ui.Modifier?, contentAlignment: androidx.compose.ui.Alignment?, propagateMinConstraints: kotlin.Boolean, content: @[Composable] @[ExtensionFunctionType] kotlin.Function1<androidx.compose.foundation.layout.BoxScope, kotlin.Unit>, $mask0: kotlin.Int, $handler: kotlin.Any?): kotlin.Unit [inline] declared in androidx.compose.foundation.layout.BoxKt' type=kotlin.Unit origin=DEFAULT_DISPATCH_CALL
+      ARG modifier: CALL 'public final fun background-bw27NRU$default ($this$background: androidx.compose.ui.Modifier, color: androidx.compose.ui.graphics.Color, shape: androidx.compose.ui.graphics.Shape?, $mask0: kotlin.Int, $handler: kotlin.Any?): androidx.compose.ui.Modifier declared in androidx.compose.foundation.BackgroundKt' type=androidx.compose.ui.Modifier origin=DEFAULT_DISPATCH_CALL
+        ARG $this$background: CALL 'public final fun fillMaxSize$default (<this>: androidx.compose.ui.Modifier, fraction: kotlin.Float, $mask0: kotlin.Int, $handler: kotlin.Any?): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout.SizeKt' type=androidx.compose.ui.Modifier origin=DEFAULT_DISPATCH_CALL
+          ARG <this>: GET_FIELD 'FIELD FIELD_FOR_OBJECT_INSTANCE name:Companion type:androidx.compose.ui.Modifier.Companion visibility:public [final,static] declared in androidx.compose.ui.Modifier' type=androidx.compose.ui.Modifier.Companion origin=null
+          ARG fraction: COMPOSITE type=kotlin.Float origin=DEFAULT_VALUE
+            CONST Float type=kotlin.Float value=0.0
+          ARG $mask0: CONST Int type=kotlin.Int value=1
+          ARG $handler: CONST Null type=kotlin.Any? value=null
+        ARG color: CALL 'public final fun getBackground-0d7_KjU (): androidx.compose.ui.graphics.Color declared in androidx.compose.material3.ColorScheme' type=androidx.compose.ui.graphics.Color origin=GET_PROPERTY
+          ARG <this>: CALL 'public final fun <get-colorScheme> (): androidx.compose.material3.ColorScheme declared in androidx.compose.material3.MaterialTheme' type=androidx.compose.material3.ColorScheme origin=GET_PROPERTY
+            ARG <this>: GET_FIELD 'FIELD FIELD_FOR_OBJECT_INSTANCE name:INSTANCE type:androidx.compose.material3.MaterialTheme visibility:public [final,static] declared in androidx.compose.material3.MaterialTheme' type=androidx.compose.material3.MaterialTheme origin=null
+        ARG shape: COMPOSITE type=androidx.compose.ui.graphics.Shape? origin=DEFAULT_VALUE
+          CONST Null type=androidx.compose.ui.graphics.Shape? value=null
+        ARG $mask0: CONST Int type=kotlin.Int value=2
+        ARG $handler: CONST Null type=kotlin.Any? value=null
+      ARG contentAlignment: CALL 'public final fun <get-Center> (): androidx.compose.ui.Alignment declared in androidx.compose.ui.Alignment.Companion' type=androidx.compose.ui.Alignment origin=GET_PROPERTY
+        ARG <this>: GET_FIELD 'FIELD FIELD_FOR_OBJECT_INSTANCE name:Companion type:androidx.compose.ui.Alignment.Companion visibility:public [final,static] declared in androidx.compose.ui.Alignment' type=androidx.compose.ui.Alignment.Companion origin=null
+      ARG propagateMinConstraints: COMPOSITE type=kotlin.Boolean origin=DEFAULT_VALUE
+        CONST Boolean type=kotlin.Boolean value=false
+      ARG content: BLOCK type=@[ExtensionFunctionType] kotlin.Function1<androidx.compose.foundation.layout.BoxScope, kotlin.Unit> origin=LAMBDA
+        COMPOSITE type=kotlin.Unit origin=null
+        FUNCTION_REFERENCE 'private final fun LoginScreen$lambda$31 ($this$Box: androidx.compose.foundation.layout.BoxScope, $apps: kotlin.collections.List<kotlin.Pair<kotlin.String, kotlin.String>>, $selectedApp$delegate: androidx.compose.runtime.MutableState<kotlin.String>, $username$delegate: androidx.compose.runtime.MutableState<kotlin.String>, $password$delegate: androidx.compose.runtime.MutableState<kotlin.String>, $showPassword$delegate: androidx.compose.runtime.MutableState<kotlin.Boolean>, $state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState>, $viewModel: com.yego.sabongbettingsystem.viewmodel.LoginViewModel, $context: android.content.Context): kotlin.Unit declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt' type=@[ExtensionFunctionType] kotlin.Function1<androidx.compose.foundation.layout.BoxScope, kotlin.Unit> origin=INLINE_LAMBDA reflectionTarget=null
+          ARG $apps: GET_VAR 'val apps: kotlin.collections.List<kotlin.Pair<kotlin.String, kotlin.String>> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=kotlin.collections.List<kotlin.Pair<kotlin.String, kotlin.String>> origin=null
+          ARG $selectedApp$delegate: GET_VAR 'val selectedApp$delegate: androidx.compose.runtime.MutableState<kotlin.String> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=androidx.compose.runtime.MutableState<kotlin.String> origin=null
+          ARG $username$delegate: GET_VAR 'val username$delegate: androidx.compose.runtime.MutableState<kotlin.String> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=androidx.compose.runtime.MutableState<kotlin.String> origin=null
+          ARG $password$delegate: GET_VAR 'val password$delegate: androidx.compose.runtime.MutableState<kotlin.String> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=androidx.compose.runtime.MutableState<kotlin.String> origin=null
+          ARG $showPassword$delegate: GET_VAR 'val showPassword$delegate: androidx.compose.runtime.MutableState<kotlin.Boolean> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=androidx.compose.runtime.MutableState<kotlin.Boolean> origin=null
+          ARG $state$delegate: GET_VAR 'val state$delegate: androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=androidx.compose.runtime.State<com.yego.sabongbettingsystem.viewmodel.LoginState> origin=null
+          ARG $viewModel: GET_VAR 'val viewModel: com.yego.sabongbettingsystem.viewmodel.LoginViewModel [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=com.yego.sabongbettingsystem.viewmodel.LoginViewModel origin=null
+          ARG $context: GET_VAR 'val context: android.content.Context [val] declared in com.yego.sabongbettingsystem.ui.login.LoginScreenKt.LoginScreen' type=android.content.Context origin=null
+      ARG $mask0: CONST Int type=kotlin.Int value=4
+      ARG $handler: CONST Null type=kotlin.Any? value=null
+
+	at org.jetbrains.kotlin.backend.jvm.codegen.FunctionCodegen.generate(FunctionCodegen.kt:50)
+	at org.jetbrains.kotlin.backend.jvm.codegen.FunctionCodegen.generate$default(FunctionCodegen.kt:43)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ClassCodegen.generateMethodNode(ClassCodegen.kt:422)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ClassCodegen.generateMethod(ClassCodegen.kt:439)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ClassCodegen.generate(ClassCodegen.kt:164)
+	at org.jetbrains.kotlin.backend.jvm.JvmIrCodegenFactory.generateFile(JvmIrCodegenFactory.kt:419)
+	at org.jetbrains.kotlin.backend.jvm.JvmIrCodegenFactory.invokeCodegen(JvmIrCodegenFactory.kt:388)
+	at org.jetbrains.kotlin.cli.jvm.compiler.KotlinToJVMBytecodeCompiler.runCodegen$cli(KotlinToJVMBytecodeCompiler.kt:431)
+	at org.jetbrains.kotlin.cli.pipeline.jvm.JvmBackendPipelinePhase.executePhase(JvmBackendPipelinePhase.kt:95)
+	at org.jetbrains.kotlin.cli.pipeline.jvm.JvmBackendPipelinePhase.executePhase(JvmBackendPipelinePhase.kt:36)
+	at org.jetbrains.kotlin.cli.pipeline.jvm.JvmBackendPipelinePhase.executePhase(JvmBackendPipelinePhase.kt:29)
+	at org.jetbrains.kotlin.cli.pipeline.PipelinePhase.phaseBody(PipelinePhase.kt:68)
+	at org.jetbrains.kotlin.cli.pipeline.PipelinePhase.phaseBody(PipelinePhase.kt:58)
+	at org.jetbrains.kotlin.config.phaser.NamedCompilerPhase.invoke(CompilerPhase.kt:102)
+	at org.jetbrains.kotlin.backend.common.phaser.CompositePhase.invoke(PhaseBuilders.kt:22)
+	at org.jetbrains.kotlin.config.phaser.CompilerPhaseKt.invokeToplevel(CompilerPhase.kt:53)
+	at org.jetbrains.kotlin.cli.pipeline.AbstractCliPipeline.runPhasedPipeline(AbstractCliPipeline.kt:109)
+	at org.jetbrains.kotlin.cli.pipeline.AbstractCliPipeline.execute(AbstractCliPipeline.kt:68)
+	at org.jetbrains.kotlin.cli.jvm.K2JVMCompiler.doExecutePhased(K2JVMCompiler.kt:78)
+	at org.jetbrains.kotlin.cli.jvm.K2JVMCompiler.doExecutePhased(K2JVMCompiler.kt:44)
+	at org.jetbrains.kotlin.cli.common.CLICompiler.execImpl(CLICompiler.kt:90)
+	at org.jetbrains.kotlin.cli.common.CLICompiler.exec(CLICompiler.kt:352)
+	at org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunnerBase.runCompiler(IncrementalJvmCompilerRunnerBase.kt:175)
+	at org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunnerBase.runCompiler(IncrementalJvmCompilerRunnerBase.kt:38)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.doCompile(IncrementalCompilerRunner.kt:504)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compileImpl(IncrementalCompilerRunner.kt:421)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.tryCompileIncrementally$lambda$10$compile(IncrementalCompilerRunner.kt:254)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.tryCompileIncrementally(IncrementalCompilerRunner.kt:272)
+	at org.jetbrains.kotlin.incremental.IncrementalCompilerRunner.compile(IncrementalCompilerRunner.kt:124)
+	at org.jetbrains.kotlin.daemon.CompileServiceImplBase.execIncrementalCompiler(CompileServiceImpl.kt:679)
+	at org.jetbrains.kotlin.daemon.CompileServiceImplBase.access$execIncrementalCompiler(CompileServiceImpl.kt:93)
+	at org.jetbrains.kotlin.daemon.CompileServiceImpl.compile(CompileServiceImpl.kt:1806)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(Unknown Source)
+	at java.base/java.lang.reflect.Method.invoke(Unknown Source)
+	at java.rmi/sun.rmi.server.UnicastServerRef.dispatch(Unknown Source)
+	at java.rmi/sun.rmi.transport.Transport$1.run(Unknown Source)
+	at java.rmi/sun.rmi.transport.Transport$1.run(Unknown Source)
+	at java.base/java.security.AccessController.doPrivileged(Unknown Source)
+	at java.rmi/sun.rmi.transport.Transport.serviceCall(Unknown Source)
+	at java.rmi/sun.rmi.transport.tcp.TCPTransport.handleMessages(Unknown Source)
+	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run0(Unknown Source)
+	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.lambda$run$0(Unknown Source)
+	at java.base/java.security.AccessController.doPrivileged(Unknown Source)
+	at java.rmi/sun.rmi.transport.tcp.TCPTransport$ConnectionHandler.run(Unknown Source)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(Unknown Source)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(Unknown Source)
+	at java.base/java.lang.Thread.run(Unknown Source)
+Caused by: org.jetbrains.kotlin.codegen.CompilationException: Back-end (JVM) Internal error: Couldn't inline method call: CALL 'public final fun <get-current> (): T of androidx.compose.runtime.CompositionLocal [inline] declared in androidx.compose.runtime.CompositionLocal' type=android.content.Context origin=GET_PROPERTY
+Method: null
+File is unknown
+The root cause java.lang.IllegalStateException was thrown at: org.jetbrains.kotlin.codegen.inline.SourceCompilerForInlineKt.getMethodNode(SourceCompilerForInline.kt:129)
+	at org.jetbrains.kotlin.backend.jvm.codegen.IrInlineCodegen.genInlineCall(IrInlineCodegen.kt:82)
+	at org.jetbrains.kotlin.backend.jvm.codegen.IrInlineCallGenerator.genCall(IrInlineCallGenerator.kt:36)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitCall(ExpressionCodegen.kt:586)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitCall(ExpressionCodegen.kt:135)
+	at org.jetbrains.kotlin.ir.expressions.IrCall.accept(IrCall.kt:24)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitVariable(ExpressionCodegen.kt:725)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitVariable(ExpressionCodegen.kt:135)
+	at org.jetbrains.kotlin.ir.declarations.IrVariable.accept(IrVariable.kt:36)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitStatementContainer(ExpressionCodegen.kt:527)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitBlockBody(ExpressionCodegen.kt:532)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.visitBlockBody(ExpressionCodegen.kt:135)
+	at org.jetbrains.kotlin.ir.expressions.IrBlockBody.accept(IrBlockBody.kt:20)
+	at org.jetbrains.kotlin.backend.jvm.codegen.ExpressionCodegen.generate(ExpressionCodegen.kt:233)
+	at org.jetbrains.kotlin.backend.jvm.codegen.FunctionCodegen.doGenerate(FunctionCodegen.kt:126)
+	at org.jetbrains.kotlin.backend.jvm.codegen.FunctionCodegen.generate(FunctionCodegen.kt:47)
+	... 46 more
+Caused by: java.lang.IllegalStateException: couldn't find inline method Landroidx/compose/runtime/CompositionLocal;.getCurrent()Ljava/lang/Object;
+	at org.jetbrains.kotlin.codegen.inline.SourceCompilerForInlineKt.getMethodNode(SourceCompilerForInline.kt:129)
+	at org.jetbrains.kotlin.codegen.inline.SourceCompilerForInlineKt.loadCompiledInlineFunction$lambda$2(SourceCompilerForInline.kt:98)
+	at org.jetbrains.kotlin.codegen.inline.InlineCache.computeMethodBytes(InlineCache.kt:90)
+	at org.jetbrains.kotlin.codegen.inline.SourceCompilerForInlineKt.loadCompiledInlineFunction(SourceCompilerForInline.kt:93)
+	at org.jetbrains.kotlin.backend.jvm.codegen.IrSourceCompilerForInline.compileInlineFunction(IrSourceCompilerForInline.kt:96)
+	at org.jetbrains.kotlin.backend.jvm.codegen.IrInlineCodegen.genInlineCall(IrInlineCodegen.kt:65)
+	... 60 more
+
+

@@ -5,6 +5,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.AdfScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,12 +19,19 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
+import androidx.compose.foundation.layout.PaddingValues
+
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.yego.sabongbettingsystem.ui.components.WsStatusBadge
+import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CashInScreen(
     navController: NavController,
     cashInViewModel: CashInViewModel,
+    reverbViewModel : ReverbViewModel,
     onLogout: () -> Unit
 ) {
     val context   = LocalContext.current
@@ -37,9 +46,44 @@ fun CashInScreen(
     var amount       by remember { mutableStateOf("") }
     var selectedSide by remember { mutableStateOf("") }
 
+    val connected       by reverbViewModel.connected.collectAsState()
+    val reverbFight     by reverbViewModel.fightState.collectAsState()
+
     LaunchedEffect(Unit) {
         viewModel.loadCurrentFight(context)
+//        viewModel.startAutoRefresh(context)
+        reverbViewModel.connect()
     }
+
+    // reload fight from API whenever reverb fires a fight update
+    LaunchedEffect(reverbFight) {
+        if (reverbFight != null) {
+            viewModel.loadCurrentFight(context)
+        }
+    }
+
+//    DisposableEffect(Unit) {
+//        onDispose {
+////            viewModel.stopAutoRefresh()
+//            reverbViewModel.disconnect()
+//        }
+//    }
+
+    val meronDisplay = reverbFight?.meronTotal?.let {
+        "%.2f".format(it)
+    } ?: fight?.meron_total ?: "0.00"
+
+    val walaDisplay  = reverbFight?.walaTotal?.let {
+        "%.2f".format(it)
+    } ?: fight?.wala_total ?: "0.00"
+
+    val statusDisplay = reverbFight?.status ?: fight?.status ?: "pending"
+
+    val fightNumber = reverbFight?.fightNumber?.takeIf { it.isNotEmpty() }
+        ?: fight?.fight_number ?: ""
+
+
+
 
     // navigate to receipt on success
     LaunchedEffect(betResult) {
@@ -62,11 +106,17 @@ fun CashInScreen(
                     }
                 },
                 actions = {
+                    WsStatusBadge(connected = connected)
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(onClick = { navController.navigate("printer_settings") }) {
+                        Icon(Icons.Default.AdfScanner, contentDescription = "Printer Settings")
+                    }
                     IconButton(onClick = {
                         viewModel.logout(context, onLogout)
                     }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout")
                     }
+
                 }
             )
         }
@@ -127,7 +177,7 @@ fun CashInScreen(
                             verticalAlignment     = Alignment.CenterVertically
                         ) {
                             Text(
-                                text       = "Fight #${fight!!.fight_number}",
+                                text       = "Fight #${fightNumber}",
                                 fontSize   = 18.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -135,7 +185,7 @@ fun CashInScreen(
                                 onClick = {},
                                 label   = {
                                     Text(
-                                        text     = fight!!.status.uppercase(),
+                                        text     = statusDisplay.uppercase(),
                                         fontSize = 11.sp
                                     )
                                 },
@@ -169,7 +219,7 @@ fun CashInScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text       = "₱${fight!!.meron_total}",
+                                        text       = "₱${meronDisplay}",
                                         fontSize   = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color      = MaterialTheme.colorScheme.error
@@ -194,7 +244,7 @@ fun CashInScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text       = "₱${fight!!.wala_total}",
+                                        text       = "₱${walaDisplay}",
                                         fontSize   = 14.sp,
                                         fontWeight = FontWeight.Bold,
                                         color      = MaterialTheme.colorScheme.primary
@@ -207,7 +257,7 @@ fun CashInScreen(
             }
 
             // ── Place Bet (only if fight is open) ─────────
-            if (fight != null && fight!!.status == "open") {
+            if (fight != null && statusDisplay == "open") {
 
                 Text(
                     text       = "Place Bet",
@@ -271,6 +321,82 @@ fun CashInScreen(
                     )
                 )
 
+// ── Quick amount buttons ──────────────────────
+                val quickAmounts = listOf(50, 100, 200, 500, 1000, 5000, 10000)
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // row 1 — small amounts
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        quickAmounts.take(4).forEach { value ->
+                            OutlinedButton(
+                                onClick  = {
+                                    val current = amount.toDoubleOrNull() ?: 0.0
+                                    amount = (current + value).toInt().toString()
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape    = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text     = "+$value",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    // row 2 — large amounts + clear
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        quickAmounts.drop(4).forEach { value ->
+                            OutlinedButton(
+                                onClick  = {
+                                    val current = amount.toDoubleOrNull() ?: 0.0
+                                    amount = (current + value).toInt().toString()
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape    = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text       = "+$value",
+                                    fontSize   = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        // clear button
+                        OutlinedButton(
+                            onClick  = { amount = "" },
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(8.dp),
+                            colors   = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text       = "Clear",
+                                fontSize   = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
                 // submit button
                 Button(
                     onClick = {
@@ -301,7 +427,7 @@ fun CashInScreen(
                         )
                     }
                 }
-            } else if (fight != null && fight!!.status != "open") {
+            } else if (fight != null && statusDisplay != "open") {
                 Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -309,7 +435,7 @@ fun CashInScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text     = "Betting is currently ${fight!!.status}. Waiting for fight to open.",
+                        text     = "Betting is currently ${statusDisplay}. Waiting for fight to open.",
                         modifier = Modifier.padding(16.dp),
                         color    = MaterialTheme.colorScheme.onSurfaceVariant,
                         style    = MaterialTheme.typography.bodyMedium

@@ -50,6 +50,8 @@ dependencies {
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.material3:material3")
 
+    implementation("com.pusher:pusher-java-client:2.4.4")
+
     // core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

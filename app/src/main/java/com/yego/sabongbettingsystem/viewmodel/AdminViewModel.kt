@@ -178,4 +178,21 @@ class AdminViewModel : ViewModel() {
             onDone()
         }
     }
+
+    // ── Auto Refresh ───────────────────────────────────────
+    private var refreshJob: kotlinx.coroutines.Job? = null
+
+    fun startAutoRefresh(context: Context) {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(5000) // refresh every 5 seconds
+                loadCurrentFight(context)
+            }
+        }
+    }
+
+    fun stopAutoRefresh() {
+        refreshJob?.cancel()
+    }
 }

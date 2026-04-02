@@ -26,88 +26,65 @@ import com.yego.sabongbettingsystem.viewmodel.LoginViewModel
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (role: String, app: String) -> Unit
+    onAdminLogin  : () -> Unit,
+    onTellerLogin : () -> Unit,
 ) {
     val context   = LocalContext.current
     val viewModel = viewModel<LoginViewModel>()
     val state     by viewModel.state.collectAsState()
 
-    var username        by remember { mutableStateOf("") }
-    var password        by remember { mutableStateOf("") }
-    var showPassword    by remember { mutableStateOf(false) }
-    var selectedApp     by remember { mutableStateOf("admin") }
+    var username     by remember { mutableStateOf("") }
+    var password     by remember { mutableStateOf("") }
+    var showPassword by remember { mutableStateOf(false) }
 
-    val apps = listOf(
-        "admin"   to "Admin",
-        "cashin"  to "Cash In",
-        "cashout" to "Cash Out",
-    )
-
-    // handle state
     LaunchedEffect(state) {
-        if (state is LoginState.Success) {
-            val s = state as LoginState.Success
-            onLoginSuccess(s.role, s.app)
-            viewModel.resetState()
+        when (state) {
+            is LoginState.SuccessAdmin  -> {
+                onAdminLogin()
+                viewModel.resetState()
+            }
+            is LoginState.SuccessTeller -> {
+                onTellerLogin()
+                viewModel.resetState()
+            }
+            else -> {}
         }
     }
 
     Box(
-        modifier = Modifier
+        modifier         = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Card(
-            modifier = Modifier
+            modifier  = Modifier
                 .fillMaxWidth()
                 .padding(24.dp),
-            shape = RoundedCornerShape(20.dp),
+            shape     = RoundedCornerShape(20.dp),
             elevation = CardDefaults.cardElevation(4.dp)
         ) {
             Column(
-                modifier = Modifier
+                modifier            = Modifier
                     .fillMaxWidth()
                     .padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
 
-                // ── Logo ──────────────────────────────────
                 Text(text = "🐓", fontSize = 48.sp)
                 Text(
-                    text = "Sabong Betting",
-                    style = MaterialTheme.typography.headlineSmall,
+                    text       = "Sabong Betting",
+                    style      = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Sign in to continue",
+                    text  = "Sign in to continue",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // ── App selector ─────────────────────────
-                Text(
-                    text = "Login as",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Start)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    apps.forEach { (value, label) ->
-                        FilterChip(
-                            selected = selectedApp == value,
-                            onClick  = { selectedApp = value },
-                            label    = { Text(label) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
 
                 // ── Username ──────────────────────────────
                 OutlinedTextField(
@@ -156,9 +133,9 @@ fun LoginScreen(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
-                            text  = (state as LoginState.Error).message,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodySmall,
+                            text     = (state as LoginState.Error).message,
+                            color    = MaterialTheme.colorScheme.onErrorContainer,
+                            style    = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(12.dp)
                         )
                     }
@@ -167,7 +144,7 @@ fun LoginScreen(
                 // ── Login button ──────────────────────────
                 Button(
                     onClick = {
-                        viewModel.login(context, username, password, selectedApp)
+                        viewModel.login(context, username, password)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -177,19 +154,18 @@ fun LoginScreen(
                 ) {
                     if (state is LoginState.Loading) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color    = MaterialTheme.colorScheme.onPrimary,
+                            modifier    = Modifier.size(20.dp),
+                            color       = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
-                            text     = "Login",
-                            fontSize = 16.sp,
+                            text       = "Login",
+                            fontSize   = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
-
             }
         }
     }

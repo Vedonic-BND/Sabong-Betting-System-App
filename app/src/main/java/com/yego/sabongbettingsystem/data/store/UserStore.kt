@@ -12,23 +12,61 @@ val Context.dataStore by preferencesDataStore(name = "user_prefs")
 class UserStore(private val context: Context) {
 
     companion object {
-        val TOKEN    = stringPreferencesKey("token")
-        val NAME     = stringPreferencesKey("name")
-        val ROLE     = stringPreferencesKey("role")
-        val APP      = stringPreferencesKey("app")
+        val TOKEN         = stringPreferencesKey("token")
+        val CASHIN_TOKEN  = stringPreferencesKey("cashin_token")
+        val CASHOUT_TOKEN = stringPreferencesKey("cashout_token")
+        val NAME          = stringPreferencesKey("name")
+        val ROLE          = stringPreferencesKey("role")
+        val APP           = stringPreferencesKey("app")
     }
 
-    val token: Flow<String?> = context.dataStore.data.map { it[TOKEN] }
-    val name:  Flow<String?> = context.dataStore.data.map { it[NAME] }
-    val role:  Flow<String?> = context.dataStore.data.map { it[ROLE] }
-    val app:   Flow<String?> = context.dataStore.data.map { it[APP] }
+    val token        : Flow<String?> = context.dataStore.data.map { it[TOKEN] }
+    val cashInToken  : Flow<String?> = context.dataStore.data.map { it[CASHIN_TOKEN] }
+    val cashOutToken : Flow<String?> = context.dataStore.data.map { it[CASHOUT_TOKEN] }
+    val name         : Flow<String?> = context.dataStore.data.map { it[NAME] }
+    val role         : Flow<String?> = context.dataStore.data.map { it[ROLE] }
+    val app          : Flow<String?> = context.dataStore.data.map { it[APP] }
 
-    suspend fun save(token: String, name: String, role: String, app: String) {
+    suspend fun saveAdmin(token: String, name: String) {
         context.dataStore.edit {
-            it[TOKEN] = token
-            it[NAME]  = name
-            it[ROLE]  = role
-            it[APP]   = app
+            it[TOKEN]  = token
+            it[NAME]   = name
+            it[ROLE]   = "admin"
+            it[APP]    = "admin"
+        }
+    }
+
+    suspend fun saveTeller(
+        cashInToken: String,
+        cashOutToken: String,
+        name: String
+    ) {
+        context.dataStore.edit {
+            it[CASHIN_TOKEN]  = cashInToken
+            it[CASHOUT_TOKEN] = cashOutToken
+            it[NAME]          = name
+            it[ROLE]          = "teller"
+            it[APP]           = ""  // not selected yet
+        }
+    }
+
+    suspend fun selectTellerMode(mode: String) {
+        context.dataStore.edit {
+            it[APP]   = mode
+            it[TOKEN] = if (mode == "cashin")
+                (context.dataStore.data.map { p -> p[CASHIN_TOKEN] ?: "" }
+                    .let { "" }) // handled below
+            else ""
+        }
+        // set active token based on mode
+        val cashIn  = context.dataStore.data.map { it[CASHIN_TOKEN] ?: "" }
+        val cashOut = context.dataStore.data.map { it[CASHOUT_TOKEN] ?: "" }
+        context.dataStore.edit { prefs ->
+            prefs[TOKEN] = if (mode == "cashin")
+                prefs[CASHIN_TOKEN] ?: ""
+            else
+                prefs[CASHOUT_TOKEN] ?: ""
+            prefs[APP] = mode
         }
     }
 
