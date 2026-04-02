@@ -10,11 +10,13 @@ import com.yego.sabongbettingsystem.data.realtime.ReverbManager
 import kotlinx.coroutines.Dispatchers
 
 data class ReverbFightState(
-    val fightNumber : String  = "",
-    val status      : String  = "",
-    val winner      : String? = null,
-    val meronTotal  : Double  = 0.0,
-    val walaTotal   : Double  = 0.0,
+    val fightNumber  : String  = "",
+    val status       : String  = "",
+    val meronStatus  : String  = "open",
+    val walaStatus   : String  = "open",
+    val winner       : String? = null,
+    val meronTotal   : Double  = 0.0,
+    val walaTotal    : Double  = 0.0,
 )
 
 class ReverbViewModel : ViewModel() {
@@ -41,7 +43,10 @@ class ReverbViewModel : ViewModel() {
                 _fightState.value = ReverbFightState(
                     fightNumber = data.optString("fight_number"),
                     status      = data.optString("status"),
-                    winner      = data.optString("winner").takeIf { it.isNotEmpty() },
+                    meronStatus = data.optString("meron_status", "open"),
+                    walaStatus  = data.optString("wala_status", "open"),
+                    winner      = data.optString("winner")
+                        .takeIf { it.isNotEmpty() && it != "null" },
                     meronTotal  = data.optDouble("meron_total", 0.0),
                     walaTotal   = data.optDouble("wala_total", 0.0),
                 )

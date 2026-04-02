@@ -25,13 +25,15 @@ data class TellerModeSelection(
 )
 
 data class Fight(
-    val id: Int,
-    val fight_number: String,
-    val status: String,
-    val winner: String?,
-    val commission_rate: String,
-    val meron_total: String,
-    val wala_total: String
+    val id              : Int,
+    val fight_number    : String,
+    val status          : String,
+    val meron_status    : String,
+    val wala_status     : String,
+    val winner          : String?,
+    val commission_rate : String,
+    val meron_total     : String,
+    val wala_total      : String
 )
 
 data class CreateFightRequest(
@@ -40,6 +42,11 @@ data class CreateFightRequest(
 
 data class UpdateStatusRequest(
     val status: String
+)
+
+data class UpdateSideStatusRequest(
+    val side   : String,
+    val status : String
 )
 
 data class DeclareWinnerRequest(

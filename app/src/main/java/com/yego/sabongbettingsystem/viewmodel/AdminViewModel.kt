@@ -7,6 +7,7 @@ import com.yego.sabongbettingsystem.data.api.RetrofitClient
 import com.yego.sabongbettingsystem.data.model.CreateFightRequest
 import com.yego.sabongbettingsystem.data.model.DeclareWinnerRequest
 import com.yego.sabongbettingsystem.data.model.Fight
+import com.yego.sabongbettingsystem.data.model.UpdateSideStatusRequest
 import com.yego.sabongbettingsystem.data.model.UpdateStatusRequest
 import com.yego.sabongbettingsystem.data.store.UserStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -136,6 +137,58 @@ class AdminViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = "Cannot connect to server."
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun updateSideStatus(
+        context: Context,
+        fightId: Int,
+        side: String,
+        status: String
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val response = RetrofitClient.api.updateSideStatus(
+                    bearerToken(context),
+                    fightId,
+                    UpdateSideStatusRequest(side, status)
+                )
+                if (response.isSuccessful) {
+                    loadCurrentFight(context)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _error.value  = "Error ${response.code()}: $errorBody"
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun finalizeBet(context: Context, fightId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val response = RetrofitClient.api.finalizeBet(
+                    bearerToken(context),
+                    fightId
+                )
+                if (response.isSuccessful) {
+                    _actionResult.value = "bet_finalized"
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _error.value  = "Error ${response.code()}: $errorBody"
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

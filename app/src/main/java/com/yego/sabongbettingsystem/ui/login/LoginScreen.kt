@@ -2,8 +2,10 @@ package com.yego.sabongbettingsystem.ui.login
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -11,6 +13,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -33,9 +36,9 @@ fun LoginScreen(
     val viewModel = viewModel<LoginViewModel>()
     val state     by viewModel.state.collectAsState()
 
-    var username     by remember { mutableStateOf("") }
-    var password     by remember { mutableStateOf("") }
-    var showPassword by remember { mutableStateOf(false) }
+    var username     by rememberSaveable { mutableStateOf("") }
+    var password     by rememberSaveable { mutableStateOf("") }
+    var showPassword by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(state) {
         when (state) {
@@ -67,7 +70,8 @@ fun LoginScreen(
             Column(
                 modifier            = Modifier
                     .fillMaxWidth()
-                    .padding(28.dp),
+                    .padding(28.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {

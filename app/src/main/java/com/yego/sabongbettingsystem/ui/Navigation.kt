@@ -1,6 +1,7 @@
 package com.yego.sabongbettingsystem.ui
 
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -16,6 +17,8 @@ import com.yego.sabongbettingsystem.ui.teller.cashin.ReceiptScreen
 import com.yego.sabongbettingsystem.ui.teller.cashout.CashOutScreen
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
 import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
+import com.yego.sabongbettingsystem.ui.admin.AdminMainScreen
+import com.yego.sabongbettingsystem.ui.admin.AdminReceiptScreen
 
 @Composable
 fun AppNavigation() {
@@ -82,9 +85,8 @@ fun AppNavigation() {
 
         // ── Admin ─────────────────────────────────────────
         composable("admin_home") {
-            AdminHomeScreen(
+            AdminMainScreen(
                 navController = navController,
-                reverbViewModel = viewModel<ReverbViewModel>(),
                 onLogout      = {
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
@@ -109,6 +111,21 @@ fun AppNavigation() {
 
         composable("admin_history") {
             AdminFightHistoryScreen(navController = navController)
+        }
+
+        composable(
+            route     = "admin_receipt/{reference}",
+            arguments = listOf(navArgument("reference") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val adminEntry      = remember(backStackEntry) {
+                navController.getBackStackEntry("admin_home")
+            }
+            val cashInViewModel = viewModel<CashInViewModel>(adminEntry)
+            AdminReceiptScreen(
+                navController   = navController,
+                reference       = backStackEntry.arguments?.getString("reference") ?: "",
+                cashInViewModel = cashInViewModel
+            )
         }
 
         // ── Teller Cash In ────────────────────────────────

@@ -2,7 +2,9 @@ package com.yego.sabongbettingsystem.ui.admin
 
 import android.content.Context
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -20,6 +22,7 @@ import com.yego.sabongbettingsystem.data.model.Fight
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.AdminViewModel
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.yego.sabongbettingsystem.ui.components.WsStatusBadge
 import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
 
@@ -51,6 +54,18 @@ fun AdminHomeScreen(
     LaunchedEffect(reverbFight) {
         if (reverbFight != null) {
             viewModel.loadCurrentFight(context)
+        }
+    }
+
+    val actionResult by viewModel.actionResult.collectAsState()
+
+    LaunchedEffect(actionResult) {
+        if (actionResult == "bet_finalized") {
+            val fightId = fight?.id
+            if (fightId != null) {
+                navController.navigate("admin_fight/$fightId")
+            }
+            viewModel.clearResult()
         }
     }
 
@@ -99,128 +114,293 @@ fun AdminHomeScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
 
-            // ── Error ─────────────────────────────────────
-            if (error != null) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text     = error!!,
-                        color    = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(12.dp),
-                        style    = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
+        val isTablet = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
 
-            // ── Current Fight Card ────────────────────────
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape    = RoundedCornerShape(16.dp)
+        if (isTablet) {
+            // ── Tablet: two column layout ─────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Left column — current fight card
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text       = "Current Fight",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        )
-                    } else if (fight == null) {
-                        Text(
-                            text  = "No active fight",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment     = Alignment.CenterVertically
+                    // ── Error ─────────────────────────────────────
+                    if (error != null) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            ),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text       = "Fight #${displayFight!!.fight_number}",
-                                fontSize   = 20.sp,
+                                text     = error!!,
+                                color    = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(12.dp),
+                                style    = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+
+                    // ── Current Fight Card ────────────────────────
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text       = "Current Fight",
+                                style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            StatusChip(status = displayFight!!.status)
-                        }
 
-                        Row(
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                                )
+                            } else if (fight == null) {
+                                Text(
+                                    text  = "No active fight",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment     = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text       = "Fight #${displayFight!!.fight_number}",
+                                        fontSize   = 20.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    StatusChip(status = displayFight!!.status)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    SideCard(
+                                        label    = "MERON",
+                                        amount   = displayFight!!.meron_total,
+                                        color    = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    SideCard(
+                                        label    = "WALA",
+                                        amount   = displayFight!!.wala_total,
+                                        color    = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Right column — actions + fight controls
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (fight != null &&
+                        displayFight!!.status != "done" &&
+                        displayFight!!.status != "cancelled"
+                    ) {
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            shape    = RoundedCornerShape(16.dp)
                         ) {
-                            SideCard(
-                                label    = "MERON",
-                                amount   = displayFight!!.meron_total,
-                                color    = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.weight(1f)
-                            )
-                            SideCard(
-                                label    = "WALA",
-                                amount   = displayFight!!.wala_total,
-                                color    = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    text       = "Fight Controls",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                FightActionButtons(
+                                    fight         = displayFight!!,
+                                    viewModel     = viewModel,
+                                    context       = context,
+                                    navController = navController
+                                )
+                            }
+                        }
+                    }
+
+                    // ── Quick Actions ─────────────────────────────
+                    Text(
+                        text  = "Actions",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick  = { navController.navigate("admin_create_fight") },
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("New Fight")
                         }
 
-                        if (displayFight!!.status != "done" && displayFight!!.status != "cancelled") {
-                            FightActionButtons(
-                                fight         = displayFight!!,
-                                viewModel     = viewModel,
-                                context       = context,
-                                navController = navController
-                            )
+                        OutlinedButton(
+                            onClick  = { navController.navigate("admin_history") },
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.History, contentDescription = null)
+                            Spacer(Modifier.width(6.dp))
+                            Text("History")
                         }
                     }
                 }
             }
 
-            // ── Quick Actions ─────────────────────────────
-            Text(
-                text  = "Actions",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+        } else {
+            // ── Phone: original layout (unchanged) ────────
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedButton(
-                    onClick  = { navController.navigate("admin_create_fight") },
-                    modifier = Modifier.weight(1f),
-                    shape    = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("New Fight")
+
+                // ── Error ─────────────────────────────────────
+                if (error != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text     = error!!,
+                            color    = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(12.dp),
+                            style    = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
 
-                OutlinedButton(
-                    onClick  = { navController.navigate("admin_history") },
-                    modifier = Modifier.weight(1f),
-                    shape    = RoundedCornerShape(12.dp)
+                // ── Current Fight Card ────────────────────────
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(Icons.Default.History, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("History")
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text       = "Current Fight",
+                            style      = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                        } else if (fight == null) {
+                            Text(
+                                text  = "No active fight",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment     = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text       = "Fight #${displayFight!!.fight_number}",
+                                    fontSize   = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                StatusChip(status = displayFight!!.status)
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                SideCard(
+                                    label    = "MERON",
+                                    amount   = displayFight!!.meron_total,
+                                    color    = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                SideCard(
+                                    label    = "WALA",
+                                    amount   = displayFight!!.wala_total,
+                                    color    = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            if (displayFight!!.status != "done" && displayFight!!.status != "cancelled") {
+                                FightActionButtons(
+                                    fight         = displayFight!!,
+                                    viewModel     = viewModel,
+                                    context       = context,
+                                    navController = navController
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── Quick Actions ─────────────────────────────
+                Text(
+                    text  = "Actions",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick  = { navController.navigate("admin_create_fight") },
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("New Fight")
+                    }
+
+                    OutlinedButton(
+                        onClick  = { navController.navigate("admin_history") },
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.History, contentDescription = null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("History")
+                    }
                 }
             }
         }
@@ -229,49 +409,197 @@ fun AdminHomeScreen(
 
 @Composable
 fun FightActionButtons(
-    fight: Fight,
-    viewModel: AdminViewModel,
-    context: Context,
-    navController: NavController
+    fight         : Fight,
+    viewModel     : AdminViewModel,
+    context       : android.content.Context,
+    navController : NavController
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         when (fight.status) {
+
+            // ── Pending → open betting ────────────────────
             "pending" -> {
                 Button(
                     onClick  = { viewModel.updateStatus(context, fight.id, "open") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(12.dp),
                     colors   = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("Open Betting")
+                    Text("Open Betting", fontWeight = FontWeight.Bold)
                 }
             }
+
+            // ── Open → side controls + close/finalize ─────
             "open" -> {
-                Button(
-                    onClick  = { viewModel.updateStatus(context, fight.id, "closed") },
-                    modifier = Modifier.weight(1f),
-                    shape    = RoundedCornerShape(12.dp),
-                    colors   = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+
+                // meron control row
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Close Betting")
+                    Text(
+                        text     = "Meron",
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically),
+                        fontWeight = FontWeight.Bold,
+                        color    = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.weight(1f))
+                    if (fight.meron_status == "open") {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.updateSideStatus(
+                                    context, fight.id, "meron", "closed"
+                                )
+                            },
+                            shape  = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) { Text("Close Meron") }
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.updateSideStatus(
+                                    context, fight.id, "meron", "open"
+                                )
+                            },
+                            shape  = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) { Text("Reopen Meron") }
+                    }
+                }
+
+                // wala control row
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text     = "Wala",
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically),
+                        fontWeight = FontWeight.Bold,
+                        color    = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.weight(1f))
+                    if (fight.wala_status == "open") {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.updateSideStatus(
+                                    context, fight.id, "wala", "closed"
+                                )
+                            },
+                            shape  = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) { Text("Close Wala") }
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.updateSideStatus(
+                                    context, fight.id, "wala", "open"
+                                )
+                            },
+                            shape  = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) { Text("Reopen Wala") }
+                    }
+                }
+
+                HorizontalDivider()
+
+                val bothClosed = fight.meron_status == "closed" && fight.wala_status == "closed"
+
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // ── Close All / Open All toggle ───────────────
+                    Row(
+                        modifier              = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text       = "All",
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.weight(1f))
+                        if (!bothClosed) {
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.updateStatus(context, fight.id, "closed")
+                                },
+                                shape  = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) { Text("Close All") }
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.updateStatus(context, fight.id, "open")
+                                },
+                                shape  = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) { Text("Open All") }
+                        }
+                    }
+
+                    // ── Finalize Bets ─────────────────────────────
+                    Button(
+                        onClick  = { viewModel.finalizeBet(context, fight.id) },
+                        modifier = Modifier.wrapContentWidth(),
+                        shape    = RoundedCornerShape(10.dp),
+                        colors   = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Finalize Bets", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
+
+            // ── Closed → reopen or declare winner ─────────
             "closed" -> {
-                Button(
-                    onClick  = { navController.navigate("admin_fight/${fight.id}") },
-                    modifier = Modifier.weight(1f),
-                    shape    = RoundedCornerShape(12.dp)
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.EmojiEvents, contentDescription = null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Declare Winner")
+                    OutlinedButton(
+                        onClick  = {
+                            viewModel.updateStatus(context, fight.id, "open")
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(10.dp)
+                    ) { Text("Reopen Betting") }
+
+                    Button(
+                        onClick  = {
+                            navController.navigate("admin_fight/${fight.id}")
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.EmojiEvents,
+                            contentDescription = null,
+                            modifier           = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text("Declare Winner")
+                    }
                 }
             }
         }

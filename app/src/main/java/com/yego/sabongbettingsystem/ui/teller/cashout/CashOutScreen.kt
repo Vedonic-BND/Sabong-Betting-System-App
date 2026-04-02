@@ -20,6 +20,8 @@ import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.CashOutViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.AdfScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.getValue
@@ -29,6 +31,7 @@ import com.yego.sabongbettingsystem.data.printer.BluetoothPermissionHelper
 import com.yego.sabongbettingsystem.data.printer.BluetoothPrinterService
 import kotlinx.coroutines.flow.first
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.yego.sabongbettingsystem.ui.components.QrScannerView
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +49,7 @@ fun CashOutScreen(
     val error     by viewModel.error.collectAsState()
     val confirmed by viewModel.confirmed.collectAsState()
 
-    var reference by remember { mutableStateOf("") }
+    var reference by rememberSaveable { mutableStateOf("") }
     var showConfirmDialog by remember { mutableStateOf(false) }
 
     var isPrinting   by remember { mutableStateOf(false) }
@@ -152,7 +155,8 @@ fun CashOutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 

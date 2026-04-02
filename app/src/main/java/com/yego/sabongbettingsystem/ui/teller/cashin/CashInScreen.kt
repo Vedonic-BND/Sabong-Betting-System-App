@@ -20,8 +20,11 @@ import androidx.navigation.NavController
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.yego.sabongbettingsystem.ui.components.WsStatusBadge
 import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
@@ -43,8 +46,8 @@ fun CashInScreen(
     val error     by viewModel.error.collectAsState()
     val betResult by viewModel.betResult.collectAsState()
 
-    var amount       by remember { mutableStateOf("") }
-    var selectedSide by remember { mutableStateOf("") }
+    var amount       by rememberSaveable { mutableStateOf("") }
+    var selectedSide by rememberSaveable { mutableStateOf("") }
 
     val connected       by reverbViewModel.connected.collectAsState()
     val reverbFight     by reverbViewModel.fightState.collectAsState()
@@ -61,6 +64,17 @@ fun CashInScreen(
             viewModel.loadCurrentFight(context)
         }
     }
+
+    // use reverb or loaded fight for side status
+    val meronOpen = (reverbFight?.meronStatus ?: fight?.meron_status) == "open"
+    val walaOpen  = (reverbFight?.walaStatus  ?: fight?.wala_status)  == "open"
+
+    // reset selected side if it gets closed
+    LaunchedEffect(meronOpen, walaOpen) {
+        if (selectedSide == "meron" && !meronOpen) selectedSide = ""
+        if (selectedSide == "wala"  && !walaOpen)  selectedSide = ""
+    }
+
 
 //    DisposableEffect(Unit) {
 //        onDispose {
@@ -125,7 +139,8 @@ fun CashInScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
@@ -270,40 +285,58 @@ fun CashInScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Meron button
                     Button(
                         onClick  = { selectedSide = "meron" },
                         modifier = Modifier.weight(1f).height(56.dp),
                         shape    = RoundedCornerShape(12.dp),
+                        enabled  = meronOpen && statusDisplay == "open",
                         colors   = ButtonDefaults.buttonColors(
                             containerColor = if (selectedSide == "meron")
                                 MaterialTheme.colorScheme.error
                             else
                                 MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
-                            contentColor = if (selectedSide == "meron")
+                            contentColor   = if (selectedSide == "meron")
                                 MaterialTheme.colorScheme.onError
                             else
-                                MaterialTheme.colorScheme.error
+                                MaterialTheme.colorScheme.error,
+                            disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+                            disabledContentColor   = MaterialTheme.colorScheme.error.copy(alpha = 0.35f)
                         )
                     ) {
-                        Text("MERON", fontWeight = FontWeight.Bold)
+                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                            Text("MERON", fontWeight = FontWeight.Bold)
+                            if (!meronOpen) {
+                                Text(text = "Closed", fontSize = 10.sp)
+                            }
+                        }
                     }
 
+// Wala button
                     Button(
                         onClick  = { selectedSide = "wala" },
                         modifier = Modifier.weight(1f).height(56.dp),
                         shape    = RoundedCornerShape(12.dp),
+                        enabled  = walaOpen && statusDisplay == "open",
                         colors   = ButtonDefaults.buttonColors(
                             containerColor = if (selectedSide == "wala")
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            contentColor = if (selectedSide == "wala")
+                            contentColor   = if (selectedSide == "wala")
                                 MaterialTheme.colorScheme.onPrimary
                             else
-                                MaterialTheme.colorScheme.primary
+                                MaterialTheme.colorScheme.primary,
+                            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                            disabledContentColor   = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
                         )
                     ) {
-                        Text("WALA", fontWeight = FontWeight.Bold)
+                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                            Text("WALA", fontWeight = FontWeight.Bold)
+                            if (!walaOpen) {
+                                Text(text = "Closed", fontSize = 10.sp)
+                            }
+                        }
                     }
                 }
 
@@ -402,7 +435,14 @@ fun CashInScreen(
                     onClick = {
                         val amt = amount.toDoubleOrNull()
                         if (amt != null && selectedSide.isNotEmpty()) {
-                            viewModel.placeBet(context, selectedSide, amt)
+                            // check side is still open before placing
+                            val sideStillOpen = if (selectedSide == "meron") meronOpen else walaOpen
+                            if (sideStillOpen) {
+                                viewModel.placeBet(context, selectedSide, amt)
+                            } else {
+                                // side was closed while teller was entering amount
+                                selectedSide = ""
+                            }
                         }
                     },
                     modifier = Modifier

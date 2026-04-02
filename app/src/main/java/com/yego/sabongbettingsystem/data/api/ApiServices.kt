@@ -33,6 +33,19 @@ interface ApiService {
         @Body request: UpdateStatusRequest
     ): Response<MessageResponse>
 
+    @PUT("fight/{id}/side-status")
+    suspend fun updateSideStatus(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body request: UpdateSideStatusRequest
+    ): Response<MessageResponse>
+
+    @POST("fight/{id}/finalize")
+    suspend fun finalizeBet(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<MessageResponse>
+
     @POST("fight/{id}/winner")
     suspend fun declareWinner(
         @Header("Authorization") token: String,
@@ -43,6 +56,12 @@ interface ApiService {
     // ── Bets ─────────────────────────────────────────────
     @POST("bet")
     suspend fun placeBet(
+        @Header("Authorization") token: String,
+        @Body request: PlaceBetRequest
+    ): Response<BetResponse>
+
+    @POST("bet")
+    suspend fun placeBetAsAdmin(
         @Header("Authorization") token: String,
         @Body request: PlaceBetRequest
     ): Response<BetResponse>
