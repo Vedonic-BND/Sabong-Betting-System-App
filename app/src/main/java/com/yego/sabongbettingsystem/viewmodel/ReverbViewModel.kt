@@ -40,15 +40,15 @@ class ReverbViewModel : ViewModel() {
         }
         ReverbManager.onFightUpdated = { data ->
             viewModelScope.launch(Dispatchers.Main) {
+                val current = _fightState.value
                 _fightState.value = ReverbFightState(
-                    fightNumber = data.optString("fight_number"),
-                    status      = data.optString("status"),
-                    meronStatus = data.optString("meron_status", "open"),
-                    walaStatus  = data.optString("wala_status", "open"),
-                    winner      = data.optString("winner")
-                        .takeIf { it.isNotEmpty() && it != "null" },
-                    meronTotal  = data.optDouble("meron_total", 0.0),
-                    walaTotal   = data.optDouble("wala_total", 0.0),
+                    fightNumber = current?.fightNumber ?: "",
+                    status      = current?.status ?: "open",
+                    meronStatus = current?.meronStatus ?: "open",  // ADD THIS
+                    walaStatus  = current?.walaStatus  ?: "open",  // ADD THIS
+                    winner      = current?.winner,
+                    meronTotal  = data.optDouble("meron_total", current?.meronTotal ?: 0.0),
+                    walaTotal   = data.optDouble("wala_total",  current?.walaTotal  ?: 0.0),
                 )
             }
         }
@@ -58,6 +58,8 @@ class ReverbViewModel : ViewModel() {
                 _fightState.value = ReverbFightState(
                     fightNumber = current?.fightNumber ?: "",
                     status      = current?.status ?: "open",
+                    meronStatus = current?.meronStatus ?: "open",  // ADD THIS
+                    walaStatus  = current?.walaStatus  ?: "open",  // ADD THIS
                     winner      = current?.winner,
                     meronTotal  = data.optDouble("meron_total", current?.meronTotal ?: 0.0),
                     walaTotal   = data.optDouble("wala_total",  current?.walaTotal  ?: 0.0),

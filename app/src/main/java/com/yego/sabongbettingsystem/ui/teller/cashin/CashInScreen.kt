@@ -46,8 +46,8 @@ fun CashInScreen(
     val error     by viewModel.error.collectAsState()
     val betResult by viewModel.betResult.collectAsState()
 
-    var amount       by rememberSaveable { mutableStateOf("") }
-    var selectedSide by rememberSaveable { mutableStateOf("") }
+    var amount       by remember { mutableStateOf("") }
+    var selectedSide by remember { mutableStateOf("") }
 
     val connected       by reverbViewModel.connected.collectAsState()
     val reverbFight     by reverbViewModel.fightState.collectAsState()

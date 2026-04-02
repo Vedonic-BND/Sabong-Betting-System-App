@@ -45,8 +45,8 @@ fun AdminCashInScreen(
     val error        by cashInViewModel.error.collectAsState()
     val betResult    by cashInViewModel.betResult.collectAsState()
 
-    var amount        by rememberSaveable { mutableStateOf("") }
-    var selectedSide  by rememberSaveable { mutableStateOf("") }
+    var amount        by remember { mutableStateOf("") }
+    var selectedSide  by remember { mutableStateOf("") }
 
     val meronOpen    = (reverbFight?.meronStatus ?: fight?.meron_status) == "open"
     val walaOpen     = (reverbFight?.walaStatus  ?: fight?.wala_status)  == "open"
