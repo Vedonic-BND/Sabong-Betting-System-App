@@ -98,6 +98,8 @@ object ReverbManager {
             try {
                 val raw     = JSONObject(event.data)
                 val payload = if (raw.has("data")) raw.getJSONObject("data") else raw
+                android.util.Log.d("Reverb", "meron_status: ${payload.optString("meron_status")}")
+                android.util.Log.d("Reverb", "wala_status: ${payload.optString("wala_status")}")
                 onFightUpdated?.invoke(payload)
             } catch (e: Exception) {
                 android.util.Log.e("Reverb", "Parse error: ${e.message}")

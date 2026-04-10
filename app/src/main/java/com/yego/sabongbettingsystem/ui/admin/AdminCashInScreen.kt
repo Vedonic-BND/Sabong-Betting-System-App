@@ -48,9 +48,23 @@ fun AdminCashInScreen(
     var amount        by remember { mutableStateOf("") }
     var selectedSide  by remember { mutableStateOf("") }
 
-    val meronOpen    = (reverbFight?.meronStatus ?: fight?.meron_status) == "open"
-    val walaOpen     = (reverbFight?.walaStatus  ?: fight?.wala_status)  == "open"
-    val statusDisplay = reverbFight?.status ?: fight?.status ?: "pending"
+    val meronOpen = when {
+        reverbFight?.meronStatus?.isNotEmpty() == true -> reverbFight!!.meronStatus == "open"
+        fight != null -> fight!!.meron_status == "open"
+        else          -> true
+    }
+
+    val walaOpen = when {
+        reverbFight?.walaStatus?.isNotEmpty() == true -> reverbFight!!.walaStatus == "open"
+        fight != null -> fight!!.wala_status == "open"
+        else          -> true
+    }
+
+    val statusDisplay = when {
+        reverbFight?.status?.isNotEmpty() == true -> reverbFight!!.status
+        fight != null -> fight!!.status
+        else          -> "pending"
+    }
 
     // tablet detection
     val isTablet = LocalConfiguration.current.screenWidthDp >= 600
@@ -59,16 +73,19 @@ fun AdminCashInScreen(
         cashInViewModel.loadCurrentFight(context)
     }
 
-    LaunchedEffect(reverbFight) {
-        if (reverbFight != null) {
-            cashInViewModel.loadCurrentFight(context)
-        }
-    }
+//    LaunchedEffect(reverbFight) {
+//        if (reverbFight != null) {
+//            cashInViewModel.loadCurrentFight(context)
+//        }
+//    }
 
     // reset selected side if closed
-    LaunchedEffect(meronOpen, walaOpen) {
-        if (selectedSide == "meron" && !meronOpen) selectedSide = ""
-        if (selectedSide == "wala"  && !walaOpen)  selectedSide = ""
+    LaunchedEffect(meronOpen) {
+        if (!meronOpen && selectedSide == "meron") selectedSide = ""
+    }
+
+    LaunchedEffect(walaOpen) {
+        if (!walaOpen && selectedSide == "wala") selectedSide = ""
     }
 
     // navigate to receipt on success

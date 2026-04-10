@@ -38,34 +38,39 @@ class ReverbViewModel : ViewModel() {
         ReverbManager.onDisconnected = {
             viewModelScope.launch(Dispatchers.Main) { _connected.value = false }
         }
+        
         ReverbManager.onFightUpdated = { data ->
             viewModelScope.launch(Dispatchers.Main) {
                 val current = _fightState.value
                 _fightState.value = ReverbFightState(
-                    fightNumber = current?.fightNumber ?: "",
-                    status      = current?.status ?: "open",
-                    meronStatus = current?.meronStatus ?: "open",  // ADD THIS
-                    walaStatus  = current?.walaStatus  ?: "open",  // ADD THIS
-                    winner      = current?.winner,
+                    fightNumber = data.optString("fight_number", current?.fightNumber ?: ""),
+                    status      = data.optString("status", current?.status ?: ""),
+                    meronStatus = data.optString("meron_status", current?.meronStatus ?: "open"),
+                    walaStatus  = data.optString("wala_status", current?.walaStatus ?: "open"),
+                    winner      = data.optString("winner", current?.winner),
                     meronTotal  = data.optDouble("meron_total", current?.meronTotal ?: 0.0),
-                    walaTotal   = data.optDouble("wala_total",  current?.walaTotal  ?: 0.0),
+                    walaTotal   = data.optDouble("wala_total", current?.walaTotal ?: 0.0),
                 )
             }
         }
+        
         ReverbManager.onBetPlaced = { data ->
             viewModelScope.launch(Dispatchers.Main) {
                 val current = _fightState.value
+                // When a bet is placed, we usually get updated totals and possibly status
                 _fightState.value = ReverbFightState(
-                    fightNumber = current?.fightNumber ?: "",
-                    status      = current?.status ?: "open",
-                    meronStatus = current?.meronStatus ?: "open",  // ADD THIS
-                    walaStatus  = current?.walaStatus  ?: "open",  // ADD THIS
-                    winner      = current?.winner,
+                    fightNumber = data.optString("fight_number", current?.fightNumber ?: ""),
+                    status      = data.optString("status", current?.status ?: ""),
+                    meronStatus = data.optString("meron_status", current?.meronStatus ?: "open"),
+                    walaStatus  = data.optString("wala_status", current?.walaStatus ?: "open"),
+                    winner      = data.optString("winner", current?.winner),
                     meronTotal  = data.optDouble("meron_total", current?.meronTotal ?: 0.0),
-                    walaTotal   = data.optDouble("wala_total",  current?.walaTotal  ?: 0.0),
+                    walaTotal   = data.optDouble("wala_total", current?.walaTotal ?: 0.0),
                 )
+                _lastBet.value = data
             }
         }
+
         ReverbManager.onWinnerDeclared = { data ->
             viewModelScope.launch(Dispatchers.Main) {
                 val current = _fightState.value

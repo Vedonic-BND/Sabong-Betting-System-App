@@ -33,25 +33,24 @@ fun AdminHomeScreen(
     reverbViewModel : ReverbViewModel,
     onLogout: () -> Unit
 ) {
-    val context   = LocalContext.current
+    val context = LocalContext.current
     val userStore = remember { UserStore(context) }
-    val name      by userStore.name.collectAsState(initial = "Admin")
+    val name by userStore.name.collectAsState(initial = "Admin")
     val viewModel = viewModel<AdminViewModel>()
-    val fight     by viewModel.currentFight.collectAsState()
+    val fight by viewModel.currentFight.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val error     by viewModel.error.collectAsState()
+    val error by viewModel.error.collectAsState()
 
-    val connected       by reverbViewModel.connected.collectAsState()
-    val reverbFight     by reverbViewModel.fightState.collectAsState()
+    val connected by reverbViewModel.connected.collectAsState()
+    val reverbFight by reverbViewModel.fightState.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.loadCurrentFight(context)
-//        viewModel.startAutoRefresh(context)
         reverbViewModel.connect()
     }
 
-    // reload fight from API whenever reverb fires a fight update
-    LaunchedEffect(reverbFight) {
+    // reload fight from API whenever status or fight number changes via websocket
+    LaunchedEffect(reverbFight?.status, reverbFight?.fightNumber) {
         if (reverbFight != null) {
             viewModel.loadCurrentFight(context)
         }
@@ -61,9 +60,8 @@ fun AdminHomeScreen(
 
     LaunchedEffect(actionResult) {
         if (actionResult == "bet_finalized") {
-            val fightId = fight?.id
-            if (fightId != null) {
-                navController.navigate("admin_fight/$fightId")
+            fight?.id?.let { id ->
+                navController.navigate("admin_fight/$id")
             }
             viewModel.clearResult()
         }
@@ -77,11 +75,14 @@ fun AdminHomeScreen(
 //    }
 
     // use reverb data if available, fallback to loaded fight
+    // merge reverb real-time data into the main fight object
     val displayFight = reverbFight?.let { r ->
         fight?.copy(
-            status      = r.status,
+            status = if (r.status.isNotEmpty()) r.status else fight!!.status,
+            meron_status = r.meronStatus,
+            wala_status = r.walaStatus,
             meron_total = r.meronTotal.toString(),
-            wala_total  = r.walaTotal.toString(),
+            wala_total = r.walaTotal.toString(),
         )
     } ?: fight
 
@@ -92,7 +93,7 @@ fun AdminHomeScreen(
                     Column {
                         Text("Admin Panel", fontWeight = FontWeight.Bold)
                         Text(
-                            text  = "Welcome, $name",
+                            text = "Welcome, $name",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -104,305 +105,146 @@ fun AdminHomeScreen(
                     IconButton(onClick = { navController.navigate("printer_settings") }) {
                         Icon(Icons.Default.AdfScanner, contentDescription = "Printer Settings")
                     }
-                    IconButton(onClick = {
-                        viewModel.logout(context, onLogout)
-                    }) {
+                    IconButton(onClick = { viewModel.logout(context, onLogout) }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout")
                     }
-
                 }
             )
         }
     ) { padding ->
-
         val isTablet = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
 
-        if (isTablet) {
-            // ── Tablet: two column layout ─────────────────
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Left column — current fight card
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // ── Error ─────────────────────────────────────
-                    if (error != null) {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text     = error!!,
-                                color    = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(12.dp),
-                                style    = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-
-                    // ── Current Fight Card ────────────────────────
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text       = "Current Fight",
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            if (isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                                )
-                            } else if (fight == null) {
-                                Text(
-                                    text  = "No active fight",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            } else {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment     = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text       = "Fight #${displayFight!!.fight_number}",
-                                        fontSize   = 20.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    StatusChip(status = displayFight!!.status)
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    SideCard(
-                                        label    = "MERON",
-                                        amount   = displayFight!!.meron_total,
-                                        color    = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    SideCard(
-                                        label    = "WALA",
-                                        amount   = displayFight!!.wala_total,
-                                        color    = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Right column — actions + fight controls
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    if (fight != null &&
-                        displayFight!!.status != "done" &&
-                        displayFight!!.status != "cancelled"
-                    ) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape    = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(20.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Text(
-                                    text       = "Fight Controls",
-                                    style      = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                FightActionButtons(
-                                    fight         = displayFight!!,
-                                    viewModel     = viewModel,
-                                    context       = context,
-                                    navController = navController
-                                )
-                            }
-                        }
-                    }
-
-                    // ── Quick Actions ─────────────────────────────
-                    Text(
-                        text  = "Actions",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick  = { navController.navigate("admin_create_fight") },
-                            modifier = Modifier.weight(1f),
-                            shape    = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(Modifier.width(6.dp))
-                            Text("New Fight")
-                        }
-
-                        OutlinedButton(
-                            onClick  = { navController.navigate("admin_history") },
-                            modifier = Modifier.weight(1f),
-                            shape    = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.History, contentDescription = null)
-                            Spacer(Modifier.width(6.dp))
-                            Text("History")
-                        }
-                    }
-                }
-            }
-
-        } else {
-            // ── Phone: original layout (unchanged) ────────
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-
-                // ── Error ─────────────────────────────────────
-                if (error != null) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text     = error!!,
-                            color    = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(12.dp),
-                            style    = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-
-                // ── Current Fight Card ────────────────────────
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text       = "Current Fight",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.align(Alignment.CenterHorizontally)
-                            )
-                        } else if (fight == null) {
-                            Text(
-                                text  = "No active fight",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment     = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text       = "Fight #${displayFight!!.fight_number}",
-                                    fontSize   = 20.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                StatusChip(status = displayFight!!.status)
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                SideCard(
-                                    label    = "MERON",
-                                    amount   = displayFight!!.meron_total,
-                                    color    = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                SideCard(
-                                    label    = "WALA",
-                                    amount   = displayFight!!.wala_total,
-                                    color    = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            if (displayFight!!.status != "done" && displayFight!!.status != "cancelled") {
-                                FightActionButtons(
-                                    fight         = displayFight!!,
-                                    viewModel     = viewModel,
-                                    context       = context,
-                                    navController = navController
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // ── Quick Actions ─────────────────────────────
-                Text(
-                    text  = "Actions",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        Box(modifier = Modifier.padding(padding)) {
+            if (isTablet) {
+                TabletLayout(
+                    displayFight = displayFight,
+                    isLoading = isLoading,
+                    error = error,
+                    viewModel = viewModel,
+                    navController = navController
                 )
+            } else {
+                PhoneLayout(
+                    displayFight = displayFight,
+                    isLoading = isLoading,
+                    error = error,
+                    viewModel = viewModel,
+                    navController = navController
+                )
+            }
+        }
+    }
+}
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick  = { navController.navigate("admin_create_fight") },
-                        modifier = Modifier.weight(1f),
-                        shape    = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("New Fight")
-                    }
+@Composable
+fun TabletLayout(
+    displayFight: Fight?,
+    isLoading: Boolean,
+    error: String?,
+    viewModel: AdminViewModel,
+    navController: NavController
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            ErrorMessage(error)
+            FightStatusCard(displayFight, isLoading)
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (displayFight != null && displayFight.status !in listOf("done", "cancelled")) {
+                FightControlCard(displayFight, viewModel, navController)
+            }
+            QuickActions(navController)
+        }
+    }
+}
 
-                    OutlinedButton(
-                        onClick  = { navController.navigate("admin_history") },
-                        modifier = Modifier.weight(1f),
-                        shape    = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.History, contentDescription = null)
-                        Spacer(Modifier.width(6.dp))
-                        Text("History")
-                    }
+@Composable
+fun PhoneLayout(
+    displayFight: Fight?,
+    isLoading: Boolean,
+    error: String?,
+    viewModel: AdminViewModel,
+    navController: NavController
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        ErrorMessage(error)
+        FightStatusCard(displayFight, isLoading)
+        if (displayFight != null && displayFight.status !in listOf("done", "cancelled")) {
+            FightControlCard(displayFight, viewModel, navController)
+        }
+        QuickActions(navController)
+    }
+}
+
+@Composable
+fun FightStatusCard(fight: Fight?, isLoading: Boolean) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Current Fight", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            } else if (fight == null) {
+                Text("No active fight", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Fight #${fight.fight_number}", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    StatusChip(status = fight.status)
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SideCard("MERON", fight.meron_total, MaterialTheme.colorScheme.error, Modifier.weight(1f))
+                    SideCard("WALA", fight.wala_total, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun FightControlCard(fight: Fight, viewModel: AdminViewModel, navController: NavController) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Fight Controls", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            FightActionButtons(fight, viewModel, LocalContext.current, navController)
+        }
+    }
+}
+
+@Composable
+fun QuickActions(navController: NavController) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Actions", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = { navController.navigate("admin_create_fight") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text("New Fight")
+            }
+            OutlinedButton(onClick = { navController.navigate("admin_history") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+                Icon(Icons.Default.History, null)
+                Spacer(Modifier.width(6.dp))
+                Text("History")
+            }
+        }
+    }
+}
+
+@Composable
+fun ErrorMessage(error: String?) {
+    if (error != null) {
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer), shape = RoundedCornerShape(8.dp)) {
+            Text(error, color = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
