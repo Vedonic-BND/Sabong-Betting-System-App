@@ -106,9 +106,14 @@ class AdminViewModel : ViewModel() {
                     _currentFight.value = response.body()
                     _actionResult.value = "fight_created"
                 } else {
-                    // show exact server error
+                    // parse error message from server
                     val errorBody = response.errorBody()?.string()
-                    _error.value = "Error ${response.code()}: $errorBody"
+                    val message   = try {
+                        org.json.JSONObject(errorBody ?: "").getString("message")
+                    } catch (_: Exception) {
+                        "Failed to create fight."
+                    }
+                    _error.value = message
                 }
             } catch (e: Exception) {
                 _error.value = "Cannot connect: ${e.message}"

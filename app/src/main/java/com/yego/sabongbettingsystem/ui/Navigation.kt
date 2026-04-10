@@ -117,7 +117,7 @@ fun AppNavigation() {
             route     = "admin_receipt/{reference}",
             arguments = listOf(navArgument("reference") { type = NavType.StringType })
         ) { backStackEntry ->
-            val adminEntry      = remember(backStackEntry) {
+            val adminEntry = remember(backStackEntry) {
                 navController.getBackStackEntry("admin_home")
             }
             val cashInViewModel = viewModel<CashInViewModel>(adminEntry)

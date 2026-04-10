@@ -62,10 +62,16 @@ class CashInViewModel : ViewModel() {
             _isLoading.value = true
             _error.value     = null
             try {
-                val response = RetrofitClient.api.placeBet(
-                    bearerToken(context),
-                    PlaceBetRequest(side, amount)
-                )
+                val role = UserStore(context).role.first()
+                val token = bearerToken(context)
+
+                // Switch based on role
+                val response = if (role == "admin") {
+                    RetrofitClient.api.placeBetAsAdmin(token, PlaceBetRequest(side, amount))
+                } else {
+                    RetrofitClient.api.placeBet(token, PlaceBetRequest(side, amount))
+                }
+
                 if (response.isSuccessful) {
                     _betResult.value = response.body()
                     loadCurrentFight(context)

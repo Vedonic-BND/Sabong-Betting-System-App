@@ -159,7 +159,7 @@ fun TabletLayout(
             if (displayFight != null && displayFight.status !in listOf("done", "cancelled")) {
                 FightControlCard(displayFight, viewModel, navController)
             }
-            QuickActions(navController)
+            QuickActions(navController, displayFight)
         }
     }
 }
@@ -184,7 +184,7 @@ fun PhoneLayout(
         if (displayFight != null && displayFight.status !in listOf("done", "cancelled")) {
             FightControlCard(displayFight, viewModel, navController)
         }
-        QuickActions(navController)
+        QuickActions(navController, displayFight)
     }
 }
 
@@ -222,11 +222,18 @@ fun FightControlCard(fight: Fight, viewModel: AdminViewModel, navController: Nav
 }
 
 @Composable
-fun QuickActions(navController: NavController) {
+fun QuickActions(navController: NavController, displayFight: Fight?) {
+    val hasActiveFight = displayFight != null && displayFight.status != "done" && displayFight.status != "cancelled"
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Actions", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = { navController.navigate("admin_create_fight") }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) {
+            OutlinedButton(
+                onClick = { navController.navigate("admin_create_fight") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !hasActiveFight
+            ) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(6.dp))
                 Text("New Fight")
