@@ -166,8 +166,9 @@ fun AdminReceiptScreen(
                                         """
                                         <html>
                                         <body style="margin:0;padding:0;background:white;
-                                              display:flex;justify-content:center;align-items:center;">
-                                        <img src="$qrDataUrl" style="width:150px;height:150px;"/>
+                                              display:flex;justify-content:center;align-items:center;
+                                              width:150px;height:150px;overflow:hidden;">
+                                        <img src="$qrDataUrl" style="width:150px;height:150px;object-fit:contain;"/>
                                         </body></html>
                                         """.trimIndent(),
                                         "text/html", "UTF-8", null
