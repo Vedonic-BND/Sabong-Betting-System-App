@@ -7,9 +7,9 @@ data class LoginRequest(
 
 data class LoginResponse(
     val role: String,
-    val token: String,
-    val cashin_token: String?,
-    val cashout_token: String?,
+    val token: String?,
+    val cashin_token: String? = null,
+    val cashout_token: String? = null,
     val user: UserData
 )
 
@@ -47,6 +47,11 @@ data class UpdateStatusRequest(
 data class UpdateSideStatusRequest(
     val side   : String,
     val status : String
+)
+
+data class UpdateAllSideStatusRequest(
+    val status       : String,
+    val fight_status : String? = null
 )
 
 data class DeclareWinnerRequest(

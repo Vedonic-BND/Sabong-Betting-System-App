@@ -294,7 +294,8 @@ fun FightActionButtons(
                         text     = "Meron",
                         modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically),
                         fontWeight = FontWeight.Bold,
-                        color    = MaterialTheme.colorScheme.error
+                        color    = MaterialTheme.colorScheme.error,
+                        fontSize = 18.sp
                     )
                     Spacer(Modifier.weight(1f))
                     if (fight.meron_status == "open") {
@@ -304,11 +305,12 @@ fun FightActionButtons(
                                     context, fight.id, "meron", "closed"
                                 )
                             },
+                            modifier = Modifier.height(52.dp),
                             shape  = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error
                             )
-                        ) { Text("Close Meron") }
+                        ) { Text("Close Meron", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
                     } else {
                         OutlinedButton(
                             onClick = {
@@ -316,11 +318,12 @@ fun FightActionButtons(
                                     context, fight.id, "meron", "open"
                                 )
                             },
+                            modifier = Modifier.height(52.dp),
                             shape  = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.primary
                             )
-                        ) { Text("Reopen Meron") }
+                        ) { Text("Reopen Meron", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
 
@@ -333,7 +336,8 @@ fun FightActionButtons(
                         text     = "Wala",
                         modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically),
                         fontWeight = FontWeight.Bold,
-                        color    = MaterialTheme.colorScheme.primary
+                        color    = MaterialTheme.colorScheme.primary,
+                        fontSize = 18.sp
                     )
                     Spacer(Modifier.weight(1f))
                     if (fight.wala_status == "open") {
@@ -343,11 +347,12 @@ fun FightActionButtons(
                                     context, fight.id, "wala", "closed"
                                 )
                             },
+                            modifier = Modifier.height(52.dp),
                             shape  = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error
                             )
-                        ) { Text("Close Wala") }
+                        ) { Text("Close Wala", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
                     } else {
                         OutlinedButton(
                             onClick = {
@@ -355,11 +360,12 @@ fun FightActionButtons(
                                     context, fight.id, "wala", "open"
                                 )
                             },
+                            modifier = Modifier.height(52.dp),
                             shape  = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.primary
                             )
-                        ) { Text("Reopen Wala") }
+                        ) { Text("Reopen Wala", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
                     }
                 }
 
@@ -367,87 +373,92 @@ fun FightActionButtons(
 
                 val bothClosed = fight.meron_status == "closed" && fight.wala_status == "closed"
 
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Column(
+                    modifier            = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // ── Close All / Open All toggle ───────────────
-                    Row(
-                        modifier              = Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment     = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text       = "All",
-                            fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.weight(1f))
-                        if (!bothClosed) {
-                            OutlinedButton(
-                                onClick = {
-                                    viewModel.updateStatus(context, fight.id, "closed")
-                                },
-                                shape  = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) { Text("Close All") }
-                        } else {
-                            OutlinedButton(
-                                onClick = {
-                                    viewModel.updateStatus(context, fight.id, "open")
-                                },
-                                shape  = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.primary
-                                )
-                            ) { Text("Open All") }
+                    if (!bothClosed) {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.updateAllSideStatus(context, fight.id, "closed", "closed")
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape  = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) { 
+                            Icon(Icons.Default.Close, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Close All Sides", fontSize = 18.sp, fontWeight = FontWeight.Bold) 
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.updateAllSideStatus(context, fight.id, "open", "open")
+                            },
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape  = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) { 
+                            Icon(Icons.Default.Refresh, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Open All Sides", fontSize = 18.sp, fontWeight = FontWeight.Bold) 
                         }
                     }
 
                     // ── Finalize Bets ─────────────────────────────
                     Button(
-                        onClick  = { viewModel.finalizeBet(context, fight.id) },
-                        modifier = Modifier.wrapContentWidth(),
+                        onClick  = {
+                            // Automatically close all sides and the fight if not already done, then finalize
+                            if (!bothClosed || fight.status != "closed") {
+                                viewModel.updateAllSideStatus(context, fight.id, "closed", "closed")
+                            }
+                            viewModel.finalizeBet(context, fight.id)
+                        },
+                        modifier = Modifier.fillMaxWidth().height(64.dp),
                         shape    = RoundedCornerShape(10.dp),
                         colors   = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Text("Finalize Bets", fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Lock, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("FINALIZE BETS", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
                     }
                 }
             }
 
             // ── Closed → reopen or declare winner ─────────
             "closed" -> {
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
                         onClick  = {
-                            viewModel.updateStatus(context, fight.id, "open")
+                            viewModel.updateAllSideStatus(context, fight.id, "open", "open")
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         shape    = RoundedCornerShape(10.dp)
-                    ) { Text("Reopen Betting") }
+                    ) { Text("Reopen Betting", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
 
                     Button(
                         onClick  = {
-                            navController.navigate("admin_fight/${fight.id}")
+                            viewModel.finalizeBet(context, fight.id)
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth().height(64.dp),
                         shape    = RoundedCornerShape(10.dp)
                     ) {
                         Icon(
                             Icons.Default.EmojiEvents,
                             contentDescription = null,
-                            modifier           = Modifier.size(16.dp)
+                            modifier           = Modifier.size(24.dp)
                         )
-                        Spacer(Modifier.width(6.dp))
-                        Text("Declare Winner")
+                        Spacer(Modifier.width(8.dp))
+                        Text("DECLARE WINNER", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
                     }
                 }
             }

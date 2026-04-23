@@ -28,14 +28,6 @@ fun AdminMainScreen(
     val cashInViewModel = viewModel<CashInViewModel>()
     var selectedTab      by rememberSaveable { mutableIntStateOf(0) }
 
-    // navigate to receipt — stays in same composable context
-    LaunchedEffect(cashInViewModel.betResult.collectAsState().value) {
-        val result = cashInViewModel.betResult.value
-        if (result != null) {
-            navController.navigate("admin_receipt/${result.reference}")
-        }
-    }
-
     Scaffold(
         bottomBar = {
             NavigationBar {

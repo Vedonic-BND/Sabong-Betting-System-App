@@ -43,17 +43,12 @@ fun CashInScreen(
 
     var amount       by remember { mutableStateOf("") }
     var selectedSide by remember { mutableStateOf("") }
+    var showConfirmDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         cashInViewModel.loadCurrentFight(context)
         reverbViewModel.connect()
     }
-
-//    LaunchedEffect(reverbFight) {
-//        if (reverbFight != null) {
-//            cashInViewModel.loadCurrentFight(context)
-//        }
-//    }
 
     val meronOpen = when {
         reverbFight?.meronStatus?.isNotEmpty() == true -> reverbFight!!.meronStatus == "open"
@@ -72,14 +67,6 @@ fun CashInScreen(
         fight != null -> fight!!.status
         else          -> "pending"
     }
-
-    val meronDisplay = reverbFight?.meronTotal?.let { "%.2f".format(it) }
-        ?: fight?.meron_total
-        ?: "0.00"
-
-    val walaDisplay = reverbFight?.walaTotal?.let { "%.2f".format(it) }
-        ?: fight?.wala_total
-        ?: "0.00"
 
     val fightNumber = reverbFight?.fightNumber?.takeIf { it.isNotEmpty() }
         ?: fight?.fight_number
@@ -101,12 +88,51 @@ fun CashInScreen(
         }
     }
 
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Confirm Bet") },
+            text = {
+                Column {
+                    Text("Are you sure you want to place this bet?")
+                    Spacer(Modifier.height(8.dp))
+                    Row {
+                        Text("Side: ", fontWeight = FontWeight.Bold)
+                        Text(selectedSide.uppercase(), color = if (selectedSide == "meron") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                    }
+                    Row {
+                        Text("Amount: ", fontWeight = FontWeight.Bold)
+                        Text("₱$amount", color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmDialog = false
+                        val amt = amount.toDoubleOrNull()
+                        if (amt != null && selectedSide.isNotEmpty()) {
+                            cashInViewModel.placeBet(context, selectedSide, amt)
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("Cash In", fontWeight = FontWeight.Bold)
+                        Text("Cash In - Fight #$fightNumber", fontWeight = FontWeight.Bold)
                         Text(
                             text  = "Teller: $name",
                             style = MaterialTheme.typography.labelSmall,
@@ -153,148 +179,6 @@ fun CashInScreen(
                 }
             }
 
-            // ── Current Fight Card ────────────────────────
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape    = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text       = "Current Fight",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    if (isLoading && fight == null) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.align(Alignment.CenterHorizontally)
-                        )
-                    } else if (fight == null && reverbFight == null) {
-                        Text(
-                            text  = "No open fight available.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Row(
-                            modifier              = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment     = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text       = "Fight #$fightNumber",
-                                fontSize   = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            SuggestionChip(
-                                onClick = {},
-                                label   = {
-                                    Text(
-                                        text     = statusDisplay.uppercase(),
-                                        fontSize = 11.sp
-                                    )
-                                },
-                                colors = SuggestionChipDefaults.suggestionChipColors(
-                                    containerColor = when (statusDisplay) {
-                                        "open"   -> MaterialTheme.colorScheme.primary
-                                        "closed" -> MaterialTheme.colorScheme.error
-                                        else     -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    }.copy(alpha = 0.15f),
-                                    labelColor = when (statusDisplay) {
-                                        "open"   -> MaterialTheme.colorScheme.primary
-                                        "closed" -> MaterialTheme.colorScheme.error
-                                        else     -> MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                            )
-                        }
-
-                        Row(
-                            modifier              = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Meron total
-                            Card(
-                                modifier = Modifier.weight(1f),
-                                shape    = RoundedCornerShape(10.dp),
-                                colors   = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                        .copy(alpha = if (meronOpen) 0.08f else 0.04f)
-                                )
-                            ) {
-                                Column(
-                                    modifier            = Modifier.padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text       = "MERON",
-                                        fontSize   = 11.sp,
-                                        color      = MaterialTheme.colorScheme.error
-                                            .copy(alpha = if (meronOpen) 1f else 0.4f),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text       = "₱$meronDisplay",
-                                        fontSize   = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color      = MaterialTheme.colorScheme.error
-                                            .copy(alpha = if (meronOpen) 1f else 0.4f)
-                                    )
-                                    if (!meronOpen) {
-                                        Text(
-                                            text     = "Closed",
-                                            fontSize = 9.sp,
-                                            color    = MaterialTheme.colorScheme.error
-                                                .copy(alpha = 0.5f)
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Wala total
-                            Card(
-                                modifier = Modifier.weight(1f),
-                                shape    = RoundedCornerShape(10.dp),
-                                colors   = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                        .copy(alpha = if (walaOpen) 0.08f else 0.04f)
-                                )
-                            ) {
-                                Column(
-                                    modifier            = Modifier.padding(10.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text       = "WALA",
-                                        fontSize   = 11.sp,
-                                        color      = MaterialTheme.colorScheme.primary
-                                            .copy(alpha = if (walaOpen) 1f else 0.4f),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text       = "₱$walaDisplay",
-                                        fontSize   = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color      = MaterialTheme.colorScheme.primary
-                                            .copy(alpha = if (walaOpen) 1f else 0.4f)
-                                    )
-                                    if (!walaOpen) {
-                                        Text(
-                                            text     = "Closed",
-                                            fontSize = 9.sp,
-                                            color    = MaterialTheme.colorScheme.primary
-                                                .copy(alpha = 0.5f)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             // ── Place Bet ─────────────────────────────────
             if (statusDisplay == "open" && (fight != null || reverbFight != null)) {
 
@@ -314,7 +198,7 @@ fun CashInScreen(
                         modifier = Modifier.weight(1f).height(56.dp),
                         shape    = RoundedCornerShape(12.dp),
                         enabled  = meronOpen,
-                        colors   = ButtonDefaults.buttonColors(
+                        colors = ButtonDefaults.buttonColors(
                             containerColor         = if (selectedSide == "meron")
                                 MaterialTheme.colorScheme.error
                             else
@@ -465,7 +349,7 @@ fun CashInScreen(
                             val sideStillOpen = if (selectedSide == "meron")
                                 meronOpen else walaOpen
                             if (sideStillOpen) {
-                                cashInViewModel.placeBet(context, selectedSide, amt)
+                                showConfirmDialog = true
                             } else {
                                 selectedSide = ""
                             }

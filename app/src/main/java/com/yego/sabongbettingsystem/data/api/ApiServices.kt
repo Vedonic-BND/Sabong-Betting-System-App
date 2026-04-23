@@ -40,6 +40,13 @@ interface ApiService {
         @Body request: UpdateSideStatusRequest
     ): Response<MessageResponse>
 
+    @PUT("fight/{id}/all-side-status")
+    suspend fun updateAllSideStatus(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body request: UpdateAllSideStatusRequest
+    ): Response<MessageResponse>
+
     @POST("fight/{id}/finalize")
     suspend fun finalizeBet(
         @Header("Authorization") token: String,

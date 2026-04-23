@@ -49,6 +49,9 @@ fun AdminCashInScreen(
     var amount by remember { mutableStateOf("") }
     var selectedSide by remember { mutableStateOf("") }
 
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    var pendingBetAmount by remember { mutableStateOf(0.0) }
+
     // Derive statuses safely from both Reverb and API
     val meronOpen = reverbFight?.meronStatus?.let { it == "open" } ?: (fight?.meron_status == "open")
     val walaOpen = reverbFight?.walaStatus?.let { it == "open" } ?: (fight?.wala_status == "open")
@@ -70,6 +73,77 @@ fun AdminCashInScreen(
     LaunchedEffect(fight?.fight_number) {
         amount = ""
         selectedSide = ""
+    }
+
+    // Navigation on success
+    LaunchedEffect(betResult) {
+        betResult?.let {
+            navController.navigate("admin_receipt/${it.reference}")
+        }
+    }
+
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Confirm Bet") },
+            text = {
+                Text("Place ₱$pendingBetAmount bet on ${selectedSide.uppercase()}?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmDialog = false
+                        cashInViewModel.placeBet(context, selectedSide, pendingBetAmount)
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Confirm Bet") },
+            text = {
+                Column {
+                    Text("Are you sure you want to place this bet?")
+                    Spacer(Modifier.height(8.dp))
+                    Row {
+                        Text("Side: ", fontWeight = FontWeight.Bold)
+                        Text(selectedSide.uppercase(), color = if (selectedSide == "meron") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
+                    }
+                    Row {
+                        Text("Amount: ", fontWeight = FontWeight.Bold)
+                        Text("₱$amount", color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmDialog = false
+                        val amt = amount.toDoubleOrNull()
+                        if (amt != null && selectedSide.isNotEmpty()) {
+                            cashInViewModel.placeBet(context, selectedSide, amt)
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -128,7 +202,8 @@ fun AdminCashInScreen(
                                 walaOpen = walaOpen,
                                 isLoading = isLoading,
                                 onPlaceBet = { amt ->
-                                    cashInViewModel.placeBet(context, selectedSide, amt)
+                                    pendingBetAmount = amt
+                                    showConfirmDialog = true
                                 }
                             )
                         } else if (fight != null && statusDisplay != "open") {
@@ -156,7 +231,8 @@ fun AdminCashInScreen(
                             walaOpen = walaOpen,
                             isLoading = isLoading,
                             onPlaceBet = { amt ->
-                                cashInViewModel.placeBet(context, selectedSide, amt)
+                                pendingBetAmount = amt
+                                showConfirmDialog = true
                             }
                         )
                     } else if (fight != null && statusDisplay != "open") {

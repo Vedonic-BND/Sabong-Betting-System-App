@@ -9,6 +9,7 @@ import com.yego.sabongbettingsystem.data.model.DeclareWinnerRequest
 import com.yego.sabongbettingsystem.data.model.Fight
 import com.yego.sabongbettingsystem.data.model.UpdateSideStatusRequest
 import com.yego.sabongbettingsystem.data.model.UpdateStatusRequest
+import com.yego.sabongbettingsystem.data.model.UpdateAllSideStatusRequest
 import com.yego.sabongbettingsystem.data.store.UserStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -162,6 +163,30 @@ class AdminViewModel : ViewModel() {
                     bearerToken(context),
                     fightId,
                     UpdateSideStatusRequest(side, status)
+                )
+                if (response.isSuccessful) {
+                    loadCurrentFight(context)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _error.value  = "Error ${response.code()}: $errorBody"
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun updateAllSideStatus(context: Context, fightId: Int, sideStatus: String, fightStatus: String? = null) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val response = RetrofitClient.api.updateAllSideStatus(
+                    bearerToken(context),
+                    fightId,
+                    UpdateAllSideStatusRequest(sideStatus, fightStatus)
                 )
                 if (response.isSuccessful) {
                     loadCurrentFight(context)

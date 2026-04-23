@@ -42,6 +42,9 @@ class UserStore(private val context: Context) {
         name: String
     ) {
         context.dataStore.edit {
+            // For new system: both cashInToken and cashOutToken are the same
+            // But also store in TOKEN for compatibility with bearerToken()
+            it[TOKEN]         = cashInToken
             it[CASHIN_TOKEN]  = cashInToken
             it[CASHOUT_TOKEN] = cashOutToken
             it[NAME]          = name

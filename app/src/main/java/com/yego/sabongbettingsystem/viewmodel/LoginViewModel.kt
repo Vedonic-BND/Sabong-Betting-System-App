@@ -49,12 +49,18 @@ class LoginViewModel : ViewModel() {
                             _state.value = LoginState.SuccessAdmin(body.user.name)
                         }
                         "teller" -> {
-                            store.saveTeller(
-                                cashInToken  = body.cashin_token!!,
-                                cashOutToken = body.cashout_token!!,
-                                name         = body.user.name
-                            )
-                            _state.value = LoginState.SuccessTeller(body.user.name)
+                            // Use single token for both cashin and cashout
+                            val token = body.token ?: body.cashin_token ?: body.cashout_token
+                            if (token != null) {
+                                store.saveTeller(
+                                    cashInToken  = token,
+                                    cashOutToken = token,
+                                    name         = body.user.name
+                                )
+                                _state.value = LoginState.SuccessTeller(body.user.name)
+                            } else {
+                                _state.value = LoginState.Error("No token received.")
+                            }
                         }
                         else -> {
                             _state.value = LoginState.Error("Access denied.")
