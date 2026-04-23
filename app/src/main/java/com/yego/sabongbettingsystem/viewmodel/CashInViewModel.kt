@@ -62,11 +62,12 @@ class CashInViewModel : ViewModel() {
             _isLoading.value = true
             _error.value     = null
             try {
-                val role = UserStore(context).role.first()
+                val userStore = UserStore(context)
+                val role = userStore.role.first() ?: ""
                 val token = bearerToken(context)
 
                 // Switch based on role
-                val response = if (role == "admin") {
+                val response = if (role.lowercase() == "admin") {
                     RetrofitClient.api.placeBetAsAdmin(token, PlaceBetRequest(side, amount))
                 } else {
                     RetrofitClient.api.placeBet(token, PlaceBetRequest(side, amount))
@@ -77,7 +78,12 @@ class CashInViewModel : ViewModel() {
                     loadCurrentFight(context)
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    _error.value = "Error ${response.code()}: $errorBody"
+                    val message = try {
+                        org.json.JSONObject(errorBody ?: "").getString("message")
+                    } catch (e: Exception) {
+                        "Error ${response.code()}: $errorBody"
+                    }
+                    _error.value = message
                 }
             } catch (e: Exception) {
                 _error.value = "Cannot connect: ${e.message}"

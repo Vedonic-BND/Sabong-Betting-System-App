@@ -44,6 +44,8 @@ fun AdminHomeScreen(
     val connected by reverbViewModel.connected.collectAsState()
     val reverbFight by reverbViewModel.fightState.collectAsState()
 
+    var showResetDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewModel.loadCurrentFight(context)
         reverbViewModel.connect()
@@ -65,20 +67,35 @@ fun AdminHomeScreen(
             }
             viewModel.clearResult()
         }
+        if (actionResult == "fight_reset") {
+            viewModel.clearResult()
+        }
     }
 
-//    DisposableEffect(Unit) {
-//        onDispose {
-////            viewModel.stopAutoRefresh()
-//            reverbViewModel.disconnect()
-//        }
-//    }
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text("Reset Fight Counter") },
+            text = { Text("Are you sure you want to reset the fight counter to 1? This is usually done at the start of the day.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.resetFightNumber(context)
+                        showResetDialog = false
+                    }
+                ) { Text("Reset", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 
     // use reverb data if available, fallback to loaded fight
     // merge reverb real-time data into the main fight object
     val displayFight = reverbFight?.let { r ->
         fight?.copy(
-            status = if (r.status.isNotEmpty()) r.status else fight!!.status,
+            status = if (r.status.isNotEmpty()) r.status else fight?.status ?: "pending",
             meron_status = r.meronStatus,
             wala_status = r.walaStatus,
             meron_total = r.meronTotal.toString(),
@@ -121,7 +138,8 @@ fun AdminHomeScreen(
                     isLoading = isLoading,
                     error = error,
                     viewModel = viewModel,
-                    navController = navController
+                    navController = navController,
+                    onReset = { showResetDialog = true }
                 )
             } else {
                 PhoneLayout(
@@ -129,7 +147,8 @@ fun AdminHomeScreen(
                     isLoading = isLoading,
                     error = error,
                     viewModel = viewModel,
-                    navController = navController
+                    navController = navController,
+                    onReset = { showResetDialog = true }
                 )
             }
         }
@@ -142,7 +161,8 @@ fun TabletLayout(
     isLoading: Boolean,
     error: String?,
     viewModel: AdminViewModel,
-    navController: NavController
+    navController: NavController,
+    onReset: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -159,7 +179,7 @@ fun TabletLayout(
             if (displayFight != null && displayFight.status !in listOf("done", "cancelled")) {
                 FightControlCard(displayFight, viewModel, navController)
             }
-            QuickActions(navController, displayFight)
+            QuickActions(navController, displayFight, onReset)
         }
     }
 }
@@ -170,7 +190,8 @@ fun PhoneLayout(
     isLoading: Boolean,
     error: String?,
     viewModel: AdminViewModel,
-    navController: NavController
+    navController: NavController,
+    onReset: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -184,7 +205,7 @@ fun PhoneLayout(
         if (displayFight != null && displayFight.status !in listOf("done", "cancelled")) {
             FightControlCard(displayFight, viewModel, navController)
         }
-        QuickActions(navController, displayFight)
+        QuickActions(navController, displayFight, onReset)
     }
 }
 
@@ -222,14 +243,17 @@ fun FightControlCard(fight: Fight, viewModel: AdminViewModel, navController: Nav
 }
 
 @Composable
-fun QuickActions(navController: NavController, displayFight: Fight?) {
+fun QuickActions(navController: NavController, displayFight: Fight?, onReset: () -> Unit) {
     val hasActiveFight = displayFight != null && displayFight.status != "done" && displayFight.status != "cancelled"
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Actions", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(
-                onClick = { navController.navigate("admin_create_fight") },
+                onClick = { 
+                    // No need to pass fight number anymore as it's sequential on the server
+                    navController.navigate("admin_create_fight") 
+                },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
                 enabled = !hasActiveFight
@@ -243,6 +267,17 @@ fun QuickActions(navController: NavController, displayFight: Fight?) {
                 Spacer(Modifier.width(6.dp))
                 Text("History")
             }
+        }
+        
+        OutlinedButton(
+            onClick = onReset,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+        ) {
+            Icon(Icons.Default.RestartAlt, null)
+            Spacer(Modifier.width(6.dp))
+            Text("Reset Fight Counter to 1")
         }
     }
 }
@@ -266,12 +301,17 @@ fun FightActionButtons(
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        val bothClosed = fight.meron_status == "closed" && fight.wala_status == "closed"
+        
         when (fight.status) {
 
             // ── Pending → open betting ────────────────────
             "pending" -> {
                 Button(
-                    onClick  = { viewModel.updateStatus(context, fight.id, "open") },
+                    onClick  = { 
+                        // Automatically open sides when opening betting
+                        viewModel.updateAllSideStatus(context, fight.id, "open", "open")
+                    },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape    = RoundedCornerShape(12.dp),
                     colors   = ButtonDefaults.buttonColors(
@@ -370,8 +410,6 @@ fun FightActionButtons(
                 }
 
                 HorizontalDivider()
-
-                val bothClosed = fight.meron_status == "closed" && fight.wala_status == "closed"
 
                 Column(
                     modifier            = Modifier.fillMaxWidth(),

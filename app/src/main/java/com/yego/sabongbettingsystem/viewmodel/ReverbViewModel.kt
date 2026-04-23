@@ -30,6 +30,11 @@ class ReverbViewModel : ViewModel() {
     private val _lastBet     = MutableStateFlow<JSONObject?>(null)
     val lastBet: StateFlow<JSONObject?> = _lastBet
 
+    fun resetState() {
+        _fightState.value = null
+        _lastBet.value = null
+    }
+
     fun connect() {
         // 1. set callbacks FIRST
         ReverbManager.onConnected = {

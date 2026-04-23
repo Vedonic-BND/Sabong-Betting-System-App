@@ -87,31 +87,6 @@ fun AdminCashInScreen(
             onDismissRequest = { showConfirmDialog = false },
             title = { Text("Confirm Bet") },
             text = {
-                Text("Place ₱$pendingBetAmount bet on ${selectedSide.uppercase()}?")
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showConfirmDialog = false
-                        cashInViewModel.placeBet(context, selectedSide, pendingBetAmount)
-                    }
-                ) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    if (showConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Confirm Bet") },
-            text = {
                 Column {
                     Text("Are you sure you want to place this bet?")
                     Spacer(Modifier.height(8.dp))

@@ -91,10 +91,6 @@ class AdminViewModel : ViewModel() {
     // ── Create fight ──────────────────────────────────────
 
     fun createFight(context: Context, fightNumber: String) {
-        if (fightNumber.isBlank()) {
-            _error.value = "Fight number is required."
-            return
-        }
         viewModelScope.launch {
             _isLoading.value = true
             _error.value     = null
@@ -118,6 +114,26 @@ class AdminViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = "Cannot connect: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun resetFightNumber(context: Context) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val response = RetrofitClient.api.resetFightNumber(bearerToken(context))
+                if (response.isSuccessful) {
+                    _actionResult.value = "fight_reset"
+                    loadCurrentFight(context)
+                } else {
+                    _error.value = "Failed to reset fight number."
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect to server."
             } finally {
                 _isLoading.value = false
             }

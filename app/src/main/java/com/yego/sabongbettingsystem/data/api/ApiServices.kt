@@ -26,6 +26,11 @@ interface ApiService {
         @Body request: CreateFightRequest
     ): Response<Fight>
 
+    @POST("fight/reset")
+    suspend fun resetFightNumber(
+        @Header("Authorization") token: String
+    ): Response<MessageResponse>
+
     @PUT("fight/{id}/status")
     suspend fun updateFightStatus(
         @Header("Authorization") token: String,
