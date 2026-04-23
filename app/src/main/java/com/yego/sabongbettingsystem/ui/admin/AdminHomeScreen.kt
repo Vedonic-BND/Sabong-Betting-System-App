@@ -44,8 +44,6 @@ fun AdminHomeScreen(
     val connected by reverbViewModel.connected.collectAsState()
     val reverbFight by reverbViewModel.fightState.collectAsState()
 
-    var showResetDialog by remember { mutableStateOf(false) }
-
     LaunchedEffect(Unit) {
         viewModel.loadCurrentFight(context)
         reverbViewModel.connect()
@@ -67,28 +65,6 @@ fun AdminHomeScreen(
             }
             viewModel.clearResult()
         }
-        if (actionResult == "fight_reset") {
-            viewModel.clearResult()
-        }
-    }
-
-    if (showResetDialog) {
-        AlertDialog(
-            onDismissRequest = { showResetDialog = false },
-            title = { Text("Reset Fight Counter") },
-            text = { Text("Are you sure you want to reset the fight counter to 1? This is usually done at the start of the day.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.resetFightNumber(context)
-                        showResetDialog = false
-                    }
-                ) { Text("Reset", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) { Text("Cancel") }
-            }
-        )
     }
 
     // use reverb data if available, fallback to loaded fight
@@ -138,8 +114,7 @@ fun AdminHomeScreen(
                     isLoading = isLoading,
                     error = error,
                     viewModel = viewModel,
-                    navController = navController,
-                    onReset = { showResetDialog = true }
+                    navController = navController
                 )
             } else {
                 PhoneLayout(
@@ -147,8 +122,7 @@ fun AdminHomeScreen(
                     isLoading = isLoading,
                     error = error,
                     viewModel = viewModel,
-                    navController = navController,
-                    onReset = { showResetDialog = true }
+                    navController = navController
                 )
             }
         }
@@ -161,8 +135,7 @@ fun TabletLayout(
     isLoading: Boolean,
     error: String?,
     viewModel: AdminViewModel,
-    navController: NavController,
-    onReset: () -> Unit
+    navController: NavController
 ) {
     Row(
         modifier = Modifier
@@ -179,7 +152,7 @@ fun TabletLayout(
             if (displayFight != null && displayFight.status !in listOf("done", "cancelled")) {
                 FightControlCard(displayFight, viewModel, navController)
             }
-            QuickActions(navController, displayFight, onReset)
+            QuickActions(navController, displayFight)
         }
     }
 }
@@ -190,8 +163,7 @@ fun PhoneLayout(
     isLoading: Boolean,
     error: String?,
     viewModel: AdminViewModel,
-    navController: NavController,
-    onReset: () -> Unit
+    navController: NavController
 ) {
     Column(
         modifier = Modifier
@@ -205,7 +177,7 @@ fun PhoneLayout(
         if (displayFight != null && displayFight.status !in listOf("done", "cancelled")) {
             FightControlCard(displayFight, viewModel, navController)
         }
-        QuickActions(navController, displayFight, onReset)
+        QuickActions(navController, displayFight)
     }
 }
 
@@ -243,7 +215,7 @@ fun FightControlCard(fight: Fight, viewModel: AdminViewModel, navController: Nav
 }
 
 @Composable
-fun QuickActions(navController: NavController, displayFight: Fight?, onReset: () -> Unit) {
+fun QuickActions(navController: NavController, displayFight: Fight?) {
     val hasActiveFight = displayFight != null && displayFight.status != "done" && displayFight.status != "cancelled"
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -252,7 +224,7 @@ fun QuickActions(navController: NavController, displayFight: Fight?, onReset: ()
             OutlinedButton(
                 onClick = { 
                     // No need to pass fight number anymore as it's sequential on the server
-                    navController.navigate("admin_create_fight") 
+                    navController.navigate("admin_create_fight")
                 },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
@@ -267,17 +239,6 @@ fun QuickActions(navController: NavController, displayFight: Fight?, onReset: ()
                 Spacer(Modifier.width(6.dp))
                 Text("History")
             }
-        }
-        
-        OutlinedButton(
-            onClick = onReset,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-        ) {
-            Icon(Icons.Default.RestartAlt, null)
-            Spacer(Modifier.width(6.dp))
-            Text("Reset Fight Counter to 1")
         }
     }
 }

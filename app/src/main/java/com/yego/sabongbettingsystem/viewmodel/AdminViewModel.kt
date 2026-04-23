@@ -102,6 +102,8 @@ class AdminViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     _currentFight.value = response.body()
                     _actionResult.value = "fight_created"
+                    // refresh history after creation
+                    loadFightHistory(context)
                 } else {
                     // parse error message from server
                     val errorBody = response.errorBody()?.string()
@@ -128,7 +130,11 @@ class AdminViewModel : ViewModel() {
                 val response = RetrofitClient.api.resetFightNumber(bearerToken(context))
                 if (response.isSuccessful) {
                     _actionResult.value = "fight_reset"
+                    _fightHistory.value = emptyList() // clear local history
+                    _currentFight.value = null        // clear current fight
+                    // Refresh both current fight and history to match server state
                     loadCurrentFight(context)
+                    loadFightHistory(context)
                 } else {
                     _error.value = "Failed to reset fight number."
                 }
