@@ -67,7 +67,6 @@ class CashInViewModel : ViewModel() {
             try {
                 val response = RetrofitClient.api.getBetHistory(bearerToken(context))
                 if (response.isSuccessful) {
-                    // Fix: Access the 'data' field which contains the List<BetResponse>
                     _betHistory.value = response.body()?.data ?: emptyList()
                 } else {
                     val errorBody = response.errorBody()?.string()

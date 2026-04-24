@@ -41,6 +41,7 @@ fun CashInScreen(
     val betResult by cashInViewModel.betResult.collectAsState()
     val connected     by reverbViewModel.connected.collectAsState()
     val reverbFight   by reverbViewModel.fightState.collectAsState()
+    val betHistory    by cashInViewModel.betHistory.collectAsState()
 
     var amount       by remember { mutableStateOf("") }
     var selectedSide by remember { mutableStateOf("") }
@@ -48,6 +49,7 @@ fun CashInScreen(
 
     LaunchedEffect(Unit) {
         cashInViewModel.loadCurrentFight(context)
+        cashInViewModel.loadBetHistory(context)
         reverbViewModel.connect()
     }
 
@@ -162,6 +164,56 @@ fun CashInScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            // ── Bet Summary Card ──────────────────────────
+            val meronCount = betHistory.count { it.receipt.side.uppercase() == "MERON" }
+            val walaCount = betHistory.count { it.receipt.side.uppercase() == "WALA" }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "MERON BETS",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = meronCount.toString(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    VerticalDivider(modifier = Modifier.height(40.dp))
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "WALA BETS",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = walaCount.toString(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
 
             // ── Error ─────────────────────────────────────
             if (error != null) {
