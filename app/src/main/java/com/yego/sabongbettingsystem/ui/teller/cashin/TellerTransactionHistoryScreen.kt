@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.yego.sabongbettingsystem.data.model.BetResponse
+import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +101,10 @@ fun TellerTransactionHistoryScreen(
 @Composable
 fun TransactionItem(bet: BetResponse, onClick: () -> Unit) {
     val receipt = bet.receipt
+    val context = LocalContext.current
+    val userStore = remember { UserStore(context) }
+    val tellerName by userStore.name.collectAsState(initial = "...")
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -124,6 +129,11 @@ fun TransactionItem(bet: BetResponse, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
+                    text = "Teller: ${receipt.teller ?: tellerName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
                     text = "${receipt.date} ${receipt.time}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -131,9 +141,9 @@ fun TransactionItem(bet: BetResponse, onClick: () -> Unit) {
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = receipt.side!!.uppercase(),
+                    text = receipt.side?.uppercase() ?: "",
                     fontWeight = FontWeight.Bold,
-                    color = if (receipt.side.lowercase() == "meron")
+                    color = if (receipt.side?.lowercase() == "meron")
                         MaterialTheme.colorScheme.error
                     else
                         MaterialTheme.colorScheme.primary

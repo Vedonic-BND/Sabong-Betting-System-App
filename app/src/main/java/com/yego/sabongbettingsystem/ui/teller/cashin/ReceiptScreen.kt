@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.yego.sabongbettingsystem.data.printer.BluetoothPermissionHelper
 import com.yego.sabongbettingsystem.data.printer.BluetoothPrinterService
 import com.yego.sabongbettingsystem.data.store.PrinterStore
+import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.ui.utils.QrGenerator
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +41,8 @@ fun ReceiptScreen(
     val betResult by cashInViewModel.betResult.collectAsState()
     val printerStore = remember { PrinterStore(context) }
     val printerAddress by printerStore.printerAddress.collectAsState(initial = null)
+    val userStore = remember { UserStore(context) }
+    val currentTellerName by userStore.name.collectAsState(initial = "...")
 
     var isPrinting   by remember { mutableStateOf(false) }
     var printSuccess by remember { mutableStateOf(false) }
@@ -57,6 +60,8 @@ fun ReceiptScreen(
             val ctx    = context
             val addr   = printerAddress
             val r      = betResult!!.receipt
+            val tellerToPrint = r.teller ?: currentTellerName ?: "Unknown"
+
             val error  = kotlinx.coroutines.withContext(
                 kotlinx.coroutines.Dispatchers.IO
             ) {
@@ -66,7 +71,7 @@ fun ReceiptScreen(
                     side           = r.side ?: "",
                     amount         = r.amount ?: "",
                     reference      = r.reference ?: "",
-                    teller         = r.teller ?: "",
+                    teller         = tellerToPrint,
                     date           = r.date ?: "",
                     time           = r.time ?: "",
                     qrData         = betResult!!.reference,
@@ -105,7 +110,6 @@ fun ReceiptScreen(
             }
         } else {
             val receipt    = betResult!!.receipt
-            // Generate QR Bitmap OFFLINE
             val qrBitmap = remember(betResult!!.reference) {
                 QrGenerator.generateQrCode(betResult!!.reference, 512)
             }
@@ -159,13 +163,12 @@ fun ReceiptScreen(
                         )
                         ReceiptRow(label = "Amount",    value = "₱${receipt.amount}")
                         ReceiptRow(label = "Reference", value = receipt.reference)
-                        ReceiptRow(label = "Teller",    value = receipt.teller)
+                        ReceiptRow(label = "Teller",    value = receipt.teller ?: currentTellerName)
                         ReceiptRow(label = "Date",      value = receipt.date)
                         ReceiptRow(label = "Time",      value = receipt.time)
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                        // ── QR Code ───────────────────────
                         Text(
                             text  = "Scan to verify",
                             style = MaterialTheme.typography.labelSmall,
@@ -181,19 +184,6 @@ fun ReceiptScreen(
                                     .padding(8.dp)
                                     .background(Color.White)
                             )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(150.dp)
-                                    .padding(8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "QR Generation Failed",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
                         }
 
                         Text(
@@ -214,7 +204,6 @@ fun ReceiptScreen(
                     }
                 }
 
-                // print feedback
                 if (printSuccess) {
                     Card(
                         colors = CardDefaults.cardColors(
@@ -248,7 +237,6 @@ fun ReceiptScreen(
                     }
                 }
 
-                // print button
                 Button(
                     onClick = {
                         if (BluetoothPermissionHelper.hasPermissions(context)) {
@@ -283,7 +271,6 @@ fun ReceiptScreen(
                     }
                 }
 
-                // place another bet button
                 OutlinedButton(
                     onClick  = {
                         cashInViewModel.clearResult()

@@ -83,13 +83,13 @@ data class BetHistoryResponse(
 )
 
 data class ReceiptData(
-    val fight_number: String,
-    val side: String,
-    val amount: String,
-    val reference: String,
-    val teller: String,
-    val date: String,
-    val time: String
+    val fight_number: String?,
+    val side: String?,
+    val amount: String?,
+    val reference: String?,
+    val teller: String?,
+    val date: String?,
+    val time: String?
 )
 
 data class BetData(

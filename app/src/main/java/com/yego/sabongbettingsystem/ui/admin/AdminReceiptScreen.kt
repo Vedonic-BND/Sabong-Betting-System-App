@@ -61,14 +61,14 @@ fun AdminReceiptScreen(
             ) {
                 BluetoothPrinterService.printReceipt(
                     context        = ctx,
-                    fightNumber    = r.fight_number,
-                    side           = r.side,
-                    amount         = r.amount,
-                    reference      = r.reference,
-                    teller         = r.teller,
-                    date           = r.date,
-                    time           = r.time,
-                    qrData         = r.reference,
+                    fightNumber    = r.fight_number ?: "",
+                    side           = r.side ?: "",
+                    amount         = r.amount ?: "",
+                    reference      = r.reference ?: "",
+                    teller         = r.teller ?: "",
+                    date           = r.date ?: "",
+                    time           = r.time ?: "",
+                    qrData         = r.reference ?: "",
                     printerAddress = addr
                 )
             }
@@ -187,7 +187,7 @@ fun AdminReceiptScreen(
                         }
 
                         Text(
-                            text          = receipt.reference,
+                            text          = receipt.reference ?: "",
                             fontSize      = 16.sp,
                             fontWeight    = FontWeight.Bold,
                             letterSpacing = 2.sp

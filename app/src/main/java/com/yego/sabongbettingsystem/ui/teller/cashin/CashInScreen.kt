@@ -166,8 +166,8 @@ fun CashInScreen(
         ) {
 
             // ── Bet Summary Card ──────────────────────────
-            val meronCount = betHistory.count { it.receipt.side.uppercase() == "MERON" }
-            val walaCount = betHistory.count { it.receipt.side.uppercase() == "WALA" }
+            val meronCount = betHistory.count { it.receipt.side!!.uppercase() == "MERON" }
+            val walaCount = betHistory.count { it.receipt.side!!.uppercase() == "WALA" }
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
