@@ -69,7 +69,12 @@ data class BetResponse(
     val qr: String? = null,
     val barcode: String? = null,
     val receipt: ReceiptData,
-    val bet: BetData? = null
+    val bet: BetData? = null,
+    var winner: String? = null,
+    var won: Boolean? = null,
+    var status: String? = null,
+    var payout_date: String? = null,
+    var payout_time: String? = null
 )
 
 // Wrapper for history list if the server returns { "data": [...] }
@@ -105,7 +110,9 @@ data class PayoutResponse(
     val gross_payout: String,
     val commission: String,
     val net_payout: String,
-    val status: String
+    val status: String,
+    val payout_date: String? = null,
+    val payout_time: String? = null
 )
 
 data class MessageResponse(
