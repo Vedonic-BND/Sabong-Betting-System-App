@@ -1,6 +1,7 @@
 package com.yego.sabongbettingsystem.ui.admin
 
-import android.webkit.WebView
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,19 +13,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import com.yego.sabongbettingsystem.data.printer.BluetoothPermissionHelper
 import com.yego.sabongbettingsystem.data.printer.BluetoothPrinterService
 import com.yego.sabongbettingsystem.data.store.PrinterStore
 import com.yego.sabongbettingsystem.ui.teller.cashin.ReceiptRow
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
-import kotlinx.coroutines.flow.first
+import com.yego.sabongbettingsystem.ui.utils.QrGenerator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,8 +104,11 @@ fun AdminReceiptScreen(
                 )
             }
         } else {
-            val receipt   = betResult!!.receipt
-            val qrDataUrl = betResult!!.qr
+            val receipt    = betResult!!.receipt
+            // Generate QR Bitmap OFFLINE
+            val qrBitmap = remember(betResult!!.reference) {
+                QrGenerator.generateQrCode(betResult!!.reference, 512)
+            }
 
             Column(
                 modifier = Modifier
@@ -156,27 +161,30 @@ fun AdminReceiptScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        AndroidView(
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    settings.javaScriptEnabled = false
-                                    setBackgroundColor(0xFFFFFFFF.toInt())
-                                    loadDataWithBaseURL(
-                                        null,
-                                        """
-                                        <html>
-                                        <body style="margin:0;padding:0;background:white;
-                                              display:flex;justify-content:center;align-items:center;
-                                              width:150px;height:150px;overflow:hidden;">
-                                        <img src="$qrDataUrl" style="width:150px;height:150px;object-fit:contain;"/>
-                                        </body></html>
-                                        """.trimIndent(),
-                                        "text/html", "UTF-8", null
-                                    )
-                                }
-                            },
-                            modifier = Modifier.size(150.dp).padding(4.dp)
-                        )
+                        // ── QR Code ───────────────────────
+                        if (qrBitmap != null) {
+                            Image(
+                                bitmap = qrBitmap.asImageBitmap(),
+                                contentDescription = "QR Code",
+                                modifier = Modifier
+                                    .size(150.dp)
+                                    .padding(8.dp)
+                                    .background(Color.White)
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(150.dp)
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "QR Generation Failed",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
 
                         Text(
                             text          = receipt.reference,

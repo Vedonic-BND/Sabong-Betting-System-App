@@ -78,6 +78,17 @@ interface ApiService {
         @Body request: PlaceBetRequest
     ): Response<BetResponse>
 
+    @GET("bet/history")
+    suspend fun getBetHistory(
+        @Header("Authorization") token: String
+    ): Response<BetHistoryResponse>
+
+    @GET("bet/{reference}")
+    suspend fun getBetByReference(
+        @Header("Authorization") token: String,
+        @Path("reference") reference: String
+    ): Response<BetResponse>
+
     // ── Payout ───────────────────────────────────────────
     @GET("payout/{reference}")
     suspend fun getPayout(

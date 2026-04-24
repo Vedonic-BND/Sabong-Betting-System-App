@@ -14,6 +14,7 @@ import com.yego.sabongbettingsystem.ui.settings.PrinterSettingsScreen
 import com.yego.sabongbettingsystem.ui.teller.TellerModeScreen
 import com.yego.sabongbettingsystem.ui.teller.cashin.CashInScreen
 import com.yego.sabongbettingsystem.ui.teller.cashin.ReceiptScreen
+import com.yego.sabongbettingsystem.ui.teller.cashin.TellerTransactionHistoryScreen
 import com.yego.sabongbettingsystem.ui.teller.cashout.CashOutScreen
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
 import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
@@ -140,6 +141,17 @@ fun AppNavigation() {
                         popUpTo(0) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable("teller_history") { backStackEntry ->
+            val cashInEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("cashin")
+            }
+            val cashInViewModel = viewModel<CashInViewModel>(cashInEntry)
+            TellerTransactionHistoryScreen(
+                navController = navController,
+                viewModel = cashInViewModel
             )
         }
 

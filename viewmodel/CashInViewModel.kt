@@ -65,10 +65,12 @@ class CashInViewModel : ViewModel() {
             _isLoading.value = true
             _error.value     = null
             try {
+                // For now, let's use getBetHistory to confirm connectivity and data
+                // We will filter or switch back to "me" once the backend route is confirmed
                 val response = RetrofitClient.api.getBetHistory(bearerToken(context))
+
                 if (response.isSuccessful) {
-                    // Fix: Access the 'data' field which contains the List<BetResponse>
-                    _betHistory.value = response.body()?.data ?: emptyList()
+                    _betHistory.value = response.body() ?: emptyList()
                 } else {
                     val errorBody = response.errorBody()?.string()
                     _error.value = "Error ${response.code()}: $errorBody"

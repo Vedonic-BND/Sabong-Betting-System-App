@@ -64,12 +64,17 @@ data class PlaceBetRequest(
 )
 
 data class BetResponse(
-    val message: String,
+    val message: String? = null,
     val reference: String,
-    val qr: String,
-    val barcode: String,
+    val qr: String? = null,
+    val barcode: String? = null,
     val receipt: ReceiptData,
-    val bet: BetData
+    val bet: BetData? = null
+)
+
+// Wrapper for history list if the server returns { "data": [...] }
+data class BetHistoryResponse(
+    val data: List<BetResponse>
 )
 
 data class ReceiptData(

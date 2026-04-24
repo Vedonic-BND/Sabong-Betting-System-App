@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.AdfScanner
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -392,6 +393,23 @@ fun CashInScreen(
                         style    = MaterialTheme.typography.bodyMedium
                     )
                 }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(8.dp))
+
+            // ── Transaction History Button ────────────────
+            OutlinedButton(
+                onClick = { navController.navigate("teller_history") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.History, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("View Transaction History", fontWeight = FontWeight.SemiBold)
             }
         }
     }
