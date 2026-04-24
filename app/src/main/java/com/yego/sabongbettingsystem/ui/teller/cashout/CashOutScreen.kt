@@ -101,12 +101,9 @@ fun CashOutScreen(
         }
     }
 
-    // reset on confirmed
+    // refresh history on confirmed
     LaunchedEffect(confirmed) {
         if (confirmed) {
-            // After payout, keep the reference to allow printing immediately
-            // reference = ""
-            // viewModel.clearAll()
             viewModel.loadBetHistory(context)
         }
     }
@@ -179,15 +176,69 @@ fun CashOutScreen(
                 )
             }
 
+            // ── Payout Summary Card (Always at the top) ──
+            val unpaidCount = betHistory.count { it.won == true && it.status?.lowercase() != "paid" }
+            val paidCount = betHistory.count { it.status?.lowercase() == "paid" }
+
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "UNPAID",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = unpaidCount.toString(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    VerticalDivider(modifier = Modifier.height(40.dp))
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "PAID",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = paidCount.toString(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider()
+
             when (selectedTabIndex) {
                 0 -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp)
+                            .padding(horizontal = 16.dp)
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
+                        Spacer(Modifier.height(8.dp))
+
                         if (confirmed) {
                             Card(
                                 colors = CardDefaults.cardColors(
@@ -361,6 +412,8 @@ fun CashOutScreen(
                                 }
                             }
                         }
+                        
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
                 1 -> {
