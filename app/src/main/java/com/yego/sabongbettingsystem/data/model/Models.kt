@@ -111,6 +111,7 @@ data class PayoutResponse(
     val commission: String,
     val net_payout: String,
     val status: String,
+    val teller: String,
     val payout_date: String? = null,
     val payout_time: String? = null
 )

@@ -96,12 +96,19 @@ class CashOutViewModel : ViewModel() {
             _error.value     = null
             _payout.value    = null
             try {
+                val currentTellerName = UserStore(context).name.first() ?: "Unknown"
                 val response = RetrofitClient.api.getPayout(
                     bearerToken(context),
                     reference.trim()
                 )
                 if (response.isSuccessful) {
-                    _payout.value = response.body()
+                    val payout = response.body()
+                    // Verify that the payout belongs to the current teller
+                    if (payout != null && payout.teller != currentTellerName) {
+                        _error.value = "Access denied: This receipt is issued by another teller (${payout.teller})"
+                    } else {
+                        _payout.value = payout
+                    }
                 } else {
                     val errorBody = response.errorBody()?.string()
                     _error.value = "Error ${response.code()}: $errorBody"
