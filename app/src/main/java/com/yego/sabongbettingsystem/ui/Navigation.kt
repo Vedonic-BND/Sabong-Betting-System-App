@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.ui.admin.*
 import com.yego.sabongbettingsystem.ui.login.LoginScreen
+import com.yego.sabongbettingsystem.ui.runner.RunnerScreen
 import com.yego.sabongbettingsystem.ui.settings.PrinterSettingsScreen
 import com.yego.sabongbettingsystem.ui.teller.TellerModeScreen
 import com.yego.sabongbettingsystem.ui.teller.cashin.CashInScreen
@@ -36,6 +37,7 @@ fun AppNavigation() {
     val startDestination = when {
         token.isNullOrEmpty() && role.isNullOrEmpty() -> "login"
         role == "admin"                               -> "admin_home"
+        role == "runner"                              -> "runner_home"
         role == "teller" && app == "cashin"           -> "cashin"
         role == "teller" && app == "cashout"          -> "cashout"
         role == "teller"                              -> "teller_mode"
@@ -58,6 +60,23 @@ fun AppNavigation() {
                 onTellerLogin = {
                     navController.navigate("teller_mode") {
                         popUpTo("login") { inclusive = true }
+                    }
+                },
+                onRunnerLogin = {
+                    navController.navigate("runner_home") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ── Runner ────────────────────────────────────────
+        composable("runner_home") {
+            RunnerScreen(
+                navController = navController,
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )

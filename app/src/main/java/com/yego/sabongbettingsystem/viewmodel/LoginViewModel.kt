@@ -15,6 +15,7 @@ sealed class LoginState {
     object Loading : LoginState()
     data class SuccessAdmin(val name: String)  : LoginState()
     data class SuccessTeller(val name: String) : LoginState()
+    data class SuccessRunner(val name: String) : LoginState()
     data class Error(val message: String)      : LoginState()
 }
 
@@ -49,7 +50,6 @@ class LoginViewModel : ViewModel() {
                             _state.value = LoginState.SuccessAdmin(body.user.name)
                         }
                         "teller" -> {
-                            // Use single token for both cashin and cashout
                             val token = body.token ?: body.cashin_token ?: body.cashout_token
                             if (token != null) {
                                 store.saveTeller(
@@ -61,6 +61,13 @@ class LoginViewModel : ViewModel() {
                             } else {
                                 _state.value = LoginState.Error("No token received.")
                             }
+                        }
+                        "runner" -> {
+                            store.saveRunner(
+                                token = body.token!!,
+                                name  = body.user.name
+                            )
+                            _state.value = LoginState.SuccessRunner(body.user.name)
                         }
                         else -> {
                             _state.value = LoginState.Error("Access denied.")

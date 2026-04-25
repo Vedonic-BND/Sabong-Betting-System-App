@@ -119,6 +119,7 @@ class CashInViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     _betResult.value = response.body()
                     loadCurrentFight(context)
+                    loadBetHistory(context) // Ensure history is updated after placing a bet
                 } else {
                     val errorBody = response.errorBody()?.string()
                     val message = try {

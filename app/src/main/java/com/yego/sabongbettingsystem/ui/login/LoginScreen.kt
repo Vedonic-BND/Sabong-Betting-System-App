@@ -31,6 +31,7 @@ import com.yego.sabongbettingsystem.viewmodel.LoginViewModel
 fun LoginScreen(
     onAdminLogin  : () -> Unit,
     onTellerLogin : () -> Unit,
+    onRunnerLogin : () -> Unit,
 ) {
     val context   = LocalContext.current
     val viewModel = viewModel<LoginViewModel>()
@@ -48,6 +49,10 @@ fun LoginScreen(
             }
             is LoginState.SuccessTeller -> {
                 onTellerLogin()
+                viewModel.resetState()
+            }
+            is LoginState.SuccessRunner -> {
+                onRunnerLogin()
                 viewModel.resetState()
             }
             else -> {}

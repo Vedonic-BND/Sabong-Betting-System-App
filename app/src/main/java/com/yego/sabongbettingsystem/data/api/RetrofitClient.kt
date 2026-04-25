@@ -9,7 +9,9 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    const val BASE_URL = "http://192.168.1.10:8000/api/" //change this to your server's local IP
+    // For emulator: use 10.0.2.2 (special alias for host machine)
+    // For physical device: use 192.168.1.10 (your actual IP)
+    const val BASE_URL = "http://192.168.1.10:8000/api/"
 
     private val jsonHeaderInterceptor = Interceptor { chain ->
         val request = chain.request().newBuilder()

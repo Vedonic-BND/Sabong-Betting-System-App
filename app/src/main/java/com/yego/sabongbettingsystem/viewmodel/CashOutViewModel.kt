@@ -62,7 +62,8 @@ class CashOutViewModel : ViewModel() {
                                     bet.copy(
                                         winner = p?.winner,
                                         won = p?.won,
-                                        status = p?.status
+                                        status = p?.status,
+                                        net_payout = p?.net_payout
                                     )
                                 } else {
                                     bet

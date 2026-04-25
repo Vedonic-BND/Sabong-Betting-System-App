@@ -22,6 +22,7 @@ object ReverbManager {
     var onFightUpdated   : ((JSONObject) -> Unit)? = null
     var onBetPlaced      : ((JSONObject) -> Unit)? = null
     var onWinnerDeclared : ((JSONObject) -> Unit)? = null
+    var onTellerCashUpdated : ((JSONObject) -> Unit)? = null
     var onConnected      : (() -> Unit)?           = null
     var onDisconnected   : (() -> Unit)?           = null
 
@@ -123,6 +124,27 @@ object ReverbManager {
                 val raw     = JSONObject(event.data)
                 val payload = if (raw.has("data")) raw.getJSONObject("data") else raw
                 onWinnerDeclared?.invoke(payload)
+            } catch (e: Exception) {
+                android.util.Log.e("Reverb", "Parse error: ${e.message}")
+            }
+        }
+
+        // Subscribe to cash-status channel for real-time teller updates
+        val cashStatusChannel = pusher!!.subscribe("cash-status", object : ChannelEventListener {
+            override fun onSubscriptionSucceeded(channelName: String) {
+                android.util.Log.d("Reverb", "Subscribed to: $channelName ✅")
+            }
+            override fun onEvent(event: PusherEvent) {
+                android.util.Log.d("Reverb", "Event: ${event.eventName}")
+            }
+        })
+
+        cashStatusChannel.bind("teller.cash-updated") { event ->
+            android.util.Log.d("Reverb", "teller.cash-updated: ${event.data}")
+            try {
+                val raw     = JSONObject(event.data)
+                val payload = if (raw.has("data")) raw.getJSONObject("data") else raw
+                onTellerCashUpdated?.invoke(payload)
             } catch (e: Exception) {
                 android.util.Log.e("Reverb", "Parse error: ${e.message}")
             }

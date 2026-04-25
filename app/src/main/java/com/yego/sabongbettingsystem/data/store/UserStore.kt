@@ -36,6 +36,15 @@ class UserStore(private val context: Context) {
         }
     }
 
+    suspend fun saveRunner(token: String, name: String) {
+        context.dataStore.edit {
+            it[TOKEN]  = token
+            it[NAME]   = name
+            it[ROLE]   = "runner"
+            it[APP]    = "runner"
+        }
+    }
+
     suspend fun saveTeller(
         cashInToken: String,
         cashOutToken: String,

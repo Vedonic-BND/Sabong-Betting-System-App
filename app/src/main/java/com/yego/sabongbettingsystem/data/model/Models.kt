@@ -74,7 +74,8 @@ data class BetResponse(
     var won: Boolean? = null,
     var status: String? = null,
     var payout_date: String? = null,
-    var payout_time: String? = null
+    var payout_time: String? = null,
+    var net_payout: String? = null
 )
 
 // Wrapper for history list if the server returns { "data": [...] }
@@ -118,4 +119,29 @@ data class PayoutResponse(
 
 data class MessageResponse(
     val message: String
+)
+
+// ── Runner Models ──────────────────────────────────────
+data class RunnerTransactionRequest(
+    val teller_id: Int,
+    val amount: Double,
+    val type: String // "collect" or "provide"
+)
+
+data class RunnerTransactionResponse(
+    val id: Int,
+    val runner_name: String,
+    val teller_name: String,
+    val amount: String,
+    val type: String,
+    val status: String,
+    val date: String,
+    val time: String
+)
+
+data class TellerCashStatus(
+    val id: Int,
+    val name: String,
+    val on_hand_cash: String,
+    val last_transaction: String?
 )

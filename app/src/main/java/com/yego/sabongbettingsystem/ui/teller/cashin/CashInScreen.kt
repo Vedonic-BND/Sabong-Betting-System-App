@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.AdfScanner
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,8 +22,12 @@ import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
 import com.yego.sabongbettingsystem.ui.components.WsStatusBadge
 import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
+import com.yego.sabongbettingsystem.viewmodel.CashOutViewModel
+import com.yego.sabongbettingsystem.ui.utils.parseCurrency
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.lifecycle.viewmodel.compose.viewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,16 +47,39 @@ fun CashInScreen(
     val connected     by reverbViewModel.connected.collectAsState()
     val reverbFight   by reverbViewModel.fightState.collectAsState()
     val betHistory    by cashInViewModel.betHistory.collectAsState()
-
-    var amount       by remember { mutableStateOf("") }
-    var selectedSide by remember { mutableStateOf("") }
-    var showConfirmDialog by remember { mutableStateOf(false) }
+    val lastBet       by reverbViewModel.lastBet.collectAsState()
+    val cashUpdated   by reverbViewModel.cashUpdated.collectAsState()
+    
+    val cashOutViewModel = viewModel<CashOutViewModel>()
+    val cashOutHistory by cashOutViewModel.betHistory.collectAsState()
 
     LaunchedEffect(Unit) {
         cashInViewModel.loadCurrentFight(context)
         cashInViewModel.loadBetHistory(context)
+        cashOutViewModel.loadBetHistory(context)
         reverbViewModel.connect()
     }
+
+    // Refresh bet history when a new bet is placed via Reverb
+    LaunchedEffect(lastBet) {
+        if (lastBet != null) {
+            // Refresh both cash in and cash out histories to reflect the new bet
+            cashInViewModel.loadBetHistory(context)
+            cashOutViewModel.loadBetHistory(context)
+        }
+    }
+
+    // Refresh bet history when teller cash is updated (payout made, etc.)
+    LaunchedEffect(cashUpdated) {
+        if (cashUpdated != null) {
+            // Refresh cash out history to reflect payout updates
+            cashOutViewModel.loadBetHistory(context)
+        }
+    }
+
+    var amount       by remember { mutableStateOf("") }
+    var selectedSide by remember { mutableStateOf("") }
+    var showConfirmDialog by remember { mutableStateOf(false) }
 
     val meronOpen = when {
         reverbFight?.meronStatus?.isNotEmpty() == true -> reverbFight!!.meronStatus == "open"
@@ -164,6 +192,58 @@ fun CashInScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            // ── On-Hand Cash Card ────────────────────────
+            // Calculation: Total Cash In - Total Paid Net Payouts
+            val totalCashIn = betHistory.sumOf { it.receipt.amount.parseCurrency() }
+            val totalNetPayouts = cashOutHistory
+                .filter { it.status?.lowercase() == "paid" }
+                .sumOf { it.net_payout.parseCurrency() }
+                
+            val onHandCash = totalCashIn - totalNetPayouts
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                    Column {
+                        Text(
+                            text = "TOTAL ON-HAND CASH",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "₱${String.format(Locale.US, "%,.2f", onHandCash)}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "Total In: ₱${String.format(Locale.US, "%,.0f", totalCashIn)} | Payouts: ₱${String.format(Locale.US, "%,.0f", totalNetPayouts)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
 
             // ── Bet Summary Card ──────────────────────────
             val meronCount = betHistory.count { it.receipt.side!!.uppercase() == "MERON" }

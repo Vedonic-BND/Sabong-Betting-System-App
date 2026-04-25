@@ -101,4 +101,21 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("reference") reference: String
     ): Response<MessageResponse>
+
+    // ── Runner ───────────────────────────────────────────
+    @GET("runner/tellers")
+    suspend fun getTellersCashStatus(
+        @Header("Authorization") token: String
+    ): Response<List<TellerCashStatus>>
+
+    @POST("runner/transaction")
+    suspend fun createRunnerTransaction(
+        @Header("Authorization") token: String,
+        @Body request: RunnerTransactionRequest
+    ): Response<RunnerTransactionResponse>
+
+    @GET("runner/history")
+    suspend fun getRunnerHistory(
+        @Header("Authorization") token: String
+    ): Response<List<RunnerTransactionResponse>>
 }
