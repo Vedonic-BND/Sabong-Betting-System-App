@@ -118,4 +118,8 @@ interface ApiService {
     suspend fun getRunnerHistory(
         @Header("Authorization") token: String
     ): Response<List<RunnerTransactionResponse>>
+
+    // ── Settings (public) ────────────────────────────────
+    @GET("settings")
+    suspend fun getSystemSettings(): Response<SystemSettings>
 }

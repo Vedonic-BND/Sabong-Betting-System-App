@@ -54,8 +54,10 @@ fun CashOutScreen(
     var printError   by remember { mutableStateOf<String?>(null) }
     var printSuccess by remember { mutableStateOf(false) }
 
+    var systemTitle by remember { mutableStateOf("SABONG BETTING SYSTEM") }
+
     var showScanner by remember { mutableStateOf(false) }
-    
+
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
     val launcher = rememberLauncherForActivityResult(
@@ -74,6 +76,18 @@ fun CashOutScreen(
         viewModel.loadBetHistory(context)
     }
 
+    // Load system settings
+    LaunchedEffect(Unit) {
+        try {
+            val response = com.yego.sabongbettingsystem.data.api.RetrofitClient.api.getSystemSettings()
+            if (response.isSuccessful) {
+                systemTitle = response.body()?.display_title ?: "SABONG BETTING SYSTEM"
+            }
+        } catch (e: Exception) {
+            // Use default title on error
+        }
+    }
+
     LaunchedEffect(isPrinting) {
         if (isPrinting && payout != null) {
             val ctx      = context
@@ -82,18 +96,37 @@ fun CashOutScreen(
             val resultError = kotlinx.coroutines.withContext(
                 kotlinx.coroutines.Dispatchers.IO
             ) {
-                BluetoothPrinterService.printPayoutReceipt(
-                    context    = ctx,
-                    reference  = p.reference,
-                    fight      = p.fight,
-                    side       = p.side.uppercase(),
-                    betAmount  = p.bet_amount,
-                    netPayout  = p.net_payout,
-                    status     = p.status.uppercase(),
-                    payoutDate = p.payout_date,
-                    payoutTime = p.payout_time,
-                    teller     = tellerName
-                )
+                val isRefund = p.winner?.lowercase() == "draw" || p.winner?.lowercase() == "cancelled"
+                
+                if (isRefund) {
+                    BluetoothPrinterService.printRefundReceipt(
+                        context      = ctx,
+                        reference    = p.reference,
+                        fight        = p.fight,
+                        side         = p.side.uppercase(),
+                        betAmount    = p.bet_amount,
+                        refundAmount = p.net_payout,
+                        status       = p.winner?.uppercase() ?: "REFUND",
+                        refundDate   = p.payout_date,
+                        refundTime   = p.payout_time,
+                        teller       = tellerName,
+                        systemTitle  = systemTitle
+                    )
+                } else {
+                    BluetoothPrinterService.printPayoutReceipt(
+                        context      = ctx,
+                        reference    = p.reference,
+                        fight        = p.fight,
+                        side         = p.side.uppercase(),
+                        betAmount    = p.bet_amount,
+                        netPayout    = p.net_payout,
+                        status       = p.status.uppercase(),
+                        payoutDate   = p.payout_date,
+                        payoutTime   = p.payout_time,
+                        teller       = tellerName,
+                        systemTitle  = systemTitle
+                    )
+                }
             }
             isPrinting   = false
             printSuccess = resultError == null
@@ -154,12 +187,15 @@ fun CashOutScreen(
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (showConfirmDialog && payout != null) {
+                val isRefund = payout!!.winner?.lowercase() == "draw" || payout!!.winner?.lowercase() == "cancelled"
+                val actionWord = if (isRefund) "Refund" else "Pay"
+                
                 AlertDialog(
                     onDismissRequest = { showConfirmDialog = false },
-                    title   = { Text("Confirm Payout") },
+                    title   = { Text("Confirm $actionWord") },
                     text    = {
                         Text(
-                            "Pay ₱${payout!!.net_payout} for reference ${payout!!.reference}?"
+                            "$actionWord ₱${payout!!.net_payout} for reference ${payout!!.reference}?"
                         )
                     },
                     confirmButton = {
@@ -177,7 +213,10 @@ fun CashOutScreen(
             }
 
             // ── Payout Summary Card (Always at the top) ──
-            val unpaidCount = betHistory.count { it.won == true && it.status?.lowercase() != "paid" }
+            val unpaidCount = betHistory.count { 
+                val isRefundable = it.winner?.lowercase() == "draw" || it.winner?.lowercase() == "cancelled"
+                (it.won == true || isRefundable) && it.status?.lowercase() != "paid"
+            }
             val paidCount = betHistory.count { it.status?.lowercase() == "paid" }
 
             Card(
@@ -247,7 +286,7 @@ fun CashOutScreen(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text     = "✅ Payout confirmed successfully!",
+                                    text     = "✅ Processed successfully!",
                                     color    = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.padding(12.dp),
                                     style    = MaterialTheme.typography.bodySmall,
@@ -347,6 +386,14 @@ fun CashOutScreen(
                         }
 
                         if (payout != null) {
+                            val isRefund = payout!!.winner?.lowercase() == "draw" || payout!!.winner?.lowercase() == "cancelled"
+                            val labelPrefix = if (isRefund) "Refund" else "Payout"
+                            val resultText = when(payout!!.winner?.lowercase()) {
+                                "draw" -> "DRAW (REFUNDABLE)"
+                                "cancelled" -> "CANCELLED (REFUNDABLE)"
+                                else -> if (payout!!.won) "WON ✅" else "LOST ❌"
+                            }
+
                             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                     Text("Bet Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -354,26 +401,26 @@ fun CashOutScreen(
                                     PayoutRow("Fight",       payout!!.fight)
                                     PayoutRow("Side", payout!!.side.uppercase(), valueColor = if (payout!!.side == "meron") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                                     PayoutRow("Bet Amount",  "₱${payout!!.bet_amount}")
-                                    PayoutRow("Result", if (payout!!.won) "WON ✅" else "LOST ❌", valueColor = if (payout!!.won) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                                    PayoutRow("Result", resultText, valueColor = if (payout!!.won) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                                     HorizontalDivider()
                                     PayoutRow("Status", payout!!.status.uppercase())
 
-                                    if (payout!!.won) {
-                                        PayoutRow("Net Payout", "₱${payout!!.net_payout}")
+                                    if (payout!!.won || isRefund) {
+                                        PayoutRow("Net $labelPrefix", "₱${payout!!.net_payout}")
                                         if (payout!!.status == "pending") {
                                             Button(
                                                 onClick  = { showConfirmDialog = true },
                                                 modifier = Modifier.fillMaxWidth().height(52.dp),
                                                 shape    = RoundedCornerShape(12.dp)
                                             ) {
-                                                Text("Pay ₱${payout!!.net_payout}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                                Text("${if(isRefund) "Refund" else "Pay"} ₱${payout!!.net_payout}", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                             }
                                         } else {
                                             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(8.dp)) {
-                                                Text("Already paid.", modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text(if(isRefund) "Already refunded." else "Already paid.", modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                             if (payout!!.payout_date != null) {
-                                                PayoutRow("Paid On", "${payout!!.payout_date} ${payout!!.payout_time}")
+                                                PayoutRow("${if(isRefund) "Refunded" else "Paid"} On", "${payout!!.payout_date} ${payout!!.payout_time}")
                                             }
 
                                             if (printSuccess) {
@@ -400,7 +447,7 @@ fun CashOutScreen(
                                                 } else {
                                                     Icon(Icons.Default.Print, null, modifier = Modifier.size(18.dp))
                                                     Spacer(Modifier.width(8.dp))
-                                                    Text("Print Payout Receipt", fontWeight = FontWeight.SemiBold)
+                                                    Text("Print $labelPrefix Receipt", fontWeight = FontWeight.SemiBold)
                                                 }
                                             }
                                         }
@@ -434,11 +481,12 @@ fun TransactionHistoryTabs(history: List<BetResponse>, onItemClick: (BetResponse
     val subTabs = listOf("Unpaid", "Paid")
 
     val unpaidWinners = history.filter { bet ->
-        val won = bet.won == true
+        val isRefundable = bet.winner?.lowercase() == "draw" || bet.winner?.lowercase() == "cancelled"
+        val isEligible = bet.won == true || isRefundable
         val isPaid = bet.status?.lowercase() == "paid"
-        won && !isPaid
+        isEligible && !isPaid
     }
-    
+
     val paidWinners = history.filter { bet ->
         bet.status?.lowercase() == "paid"
     }
@@ -463,8 +511,8 @@ fun TransactionHistoryTabs(history: List<BetResponse>, onItemClick: (BetResponse
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(displayList) { bet -> 
-                    TransactionItem(bet = bet, onClick = { onItemClick(bet) }) 
+                items(displayList) { bet ->
+                    TransactionItem(bet = bet, onClick = { onItemClick(bet) })
                 }
             }
         }
@@ -474,7 +522,7 @@ fun TransactionHistoryTabs(history: List<BetResponse>, onItemClick: (BetResponse
 @Composable
 fun TransactionItem(bet: BetResponse, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() }, 
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -484,7 +532,9 @@ fun TransactionItem(bet: BetResponse, onClick: () -> Unit) {
             }
             Spacer(Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "Fight #${bet.receipt.fight_number} - ${bet.receipt.side}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val isRefund = bet.winner?.lowercase() == "draw" || bet.winner?.lowercase() == "cancelled"
+                val typeLabel = if (isRefund) "REFUND (${bet.winner?.uppercase()})" else bet.receipt.side
+                Text(text = "Fight #${bet.receipt.fight_number} - $typeLabel", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(text = "${bet.receipt.date} ${bet.receipt.time}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
         }

@@ -39,6 +39,8 @@ fun AdminReceiptScreen(
     val betResult    by cashInViewModel.betResult.collectAsState()
     val printerStore = remember { PrinterStore(context) }
     val printerAddress by printerStore.printerAddress.collectAsState(initial = null)
+    
+    var systemTitle by remember { mutableStateOf("SABONG BETTING SYSTEM") }
 
     var isPrinting   by remember { mutableStateOf(false) }
     var printSuccess by remember { mutableStateOf(false) }
@@ -49,6 +51,18 @@ fun AdminReceiptScreen(
     ) { permissions ->
         if (permissions.values.all { it }) isPrinting = true
         else printError = "Bluetooth permission denied."
+    }
+
+    // Load system settings
+    LaunchedEffect(Unit) {
+        try {
+            val response = com.yego.sabongbettingsystem.data.api.RetrofitClient.api.getSystemSettings()
+            if (response.isSuccessful) {
+                systemTitle = response.body()?.display_title ?: "SABONG BETTING SYSTEM"
+            }
+        } catch (e: Exception) {
+            // Use default title on error
+        }
     }
 
     LaunchedEffect(isPrinting) {
@@ -128,8 +142,7 @@ fun AdminReceiptScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(text = "🐓 SABONG", fontSize = 24.sp, fontWeight = FontWeight.Black)
-                        Text(text = "BETTING SYSTEM", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "🐓 ${systemTitle.uppercase()}", fontSize = 24.sp, fontWeight = FontWeight.Black)
                         Text(
                             text  = "Official Bet Receipt",
                             style = MaterialTheme.typography.labelSmall,

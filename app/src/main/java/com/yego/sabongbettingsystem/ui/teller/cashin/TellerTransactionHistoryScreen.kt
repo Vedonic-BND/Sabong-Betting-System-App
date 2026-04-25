@@ -140,10 +140,15 @@ fun TransactionItem(bet: BetResponse, onClick: () -> Unit) {
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
+                val isRefund = bet.winner?.lowercase() == "draw" || bet.winner?.lowercase() == "cancelled"
+                val typeLabel = if (isRefund) "REFUND" else receipt.side?.uppercase() ?: ""
+                
                 Text(
-                    text = receipt.side?.uppercase() ?: "",
+                    text = typeLabel,
                     fontWeight = FontWeight.Bold,
-                    color = if (receipt.side?.lowercase() == "meron")
+                    color = if (isRefund)
+                        MaterialTheme.colorScheme.tertiary
+                    else if (receipt.side?.lowercase() == "meron")
                         MaterialTheme.colorScheme.error
                     else
                         MaterialTheme.colorScheme.primary

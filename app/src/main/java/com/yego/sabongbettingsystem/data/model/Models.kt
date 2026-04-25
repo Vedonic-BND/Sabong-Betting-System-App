@@ -145,3 +145,8 @@ data class TellerCashStatus(
     val on_hand_cash: String,
     val last_transaction: String?
 )
+
+data class SystemSettings(
+    val display_title: String
+)
+

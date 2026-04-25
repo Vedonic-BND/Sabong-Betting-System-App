@@ -43,6 +43,9 @@ fun ReceiptScreen(
     val printerAddress by printerStore.printerAddress.collectAsState(initial = null)
     val userStore = remember { UserStore(context) }
     val currentTellerName by userStore.name.collectAsState(initial = "...")
+    
+    var systemTitle by remember { mutableStateOf("SABONG BETTING SYSTEM") }
+    var loadingSettings by remember { mutableStateOf(true) }
 
     var isPrinting   by remember { mutableStateOf(false) }
     var printSuccess by remember { mutableStateOf(false) }
@@ -53,6 +56,20 @@ fun ReceiptScreen(
     ) { permissions ->
         if (permissions.values.all { it }) isPrinting = true
         else printError = "Bluetooth permission denied."
+    }
+
+    // Load system settings
+    LaunchedEffect(Unit) {
+        try {
+            val response = com.yego.sabongbettingsystem.data.api.RetrofitClient.api.getSystemSettings()
+            if (response.isSuccessful) {
+                systemTitle = response.body()?.display_title ?: "SABONG BETTING SYSTEM"
+            }
+        } catch (e: Exception) {
+            // Use default title on error
+        } finally {
+            loadingSettings = false
+        }
     }
 
     LaunchedEffect(isPrinting) {
@@ -75,7 +92,8 @@ fun ReceiptScreen(
                     date           = r.date ?: "",
                     time           = r.time ?: "",
                     qrData         = betResult!!.reference,
-                    printerAddress = addr
+                    printerAddress = addr,
+                    systemTitle    = systemTitle
                 )
             }
             isPrinting   = false
@@ -135,14 +153,9 @@ fun ReceiptScreen(
                     ) {
 
                         Text(
-                            text       = "🐓 SABONG",
+                            text       = "🐓 ${systemTitle.uppercase()}",
                             fontSize   = 24.sp,
                             fontWeight = FontWeight.Black
-                        )
-                        Text(
-                            text       = "BETTING SYSTEM",
-                            fontSize   = 14.sp,
-                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text  = "Official Bet Receipt",

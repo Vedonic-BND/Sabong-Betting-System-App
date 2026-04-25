@@ -63,7 +63,8 @@ object BluetoothPrinterService {
         date: String,
         time: String,
         qrData: String,
-        printerAddress: String? = null
+        printerAddress: String? = null,
+        systemTitle: String = "SABONG BETTING SYSTEM"
     ): String? {
         return try {
             val connection = if (printerAddress != null) {
@@ -75,8 +76,7 @@ object BluetoothPrinterService {
             val printer = EscPosPrinter(connection, 203, 72f, 32)
 
             printer.printFormattedTextAndCut(
-                "[C]<b><font size='big'>SABONG</font></b>\n" +
-                "[C]<b>BETTING SYSTEM</b>\n" +
+                "[C]<b>${systemTitle.uppercase()}</b>\n" +
                 "[C]Official Bet Receipt\n" +
                 "[C]------------------------------\n" +
                 "[L]Fight No.[R]<b>$fightNumber</b>\n" +
@@ -119,7 +119,8 @@ object BluetoothPrinterService {
         payoutDate: String?,
         payoutTime: String?,
         teller: String,
-        printerAddress: String? = null
+        printerAddress: String? = null,
+        systemTitle: String = "SABONG BETTING SYSTEM"
     ): String? {
         return try {
             val connection = if (printerAddress != null) {
@@ -145,8 +146,7 @@ object BluetoothPrinterService {
 
             // Payout receipt layout is focused on the winning results
             printer.printFormattedTextAndCut(
-                "[C]<b><font size='big'>SABONG</font></b>\n" +
-                "[C]<b>BETTING SYSTEM</b>\n" +
+                "[C]<b>${systemTitle.uppercase()}</b>\n" +
                 "[C]<b><font size='big'>Official Payout Receipt</font></b>\n" +
                 "[C]------------------------------\n" +
                 "[L]Fight No.[R]<b>$fight</b>\n" +
@@ -162,6 +162,63 @@ object BluetoothPrinterService {
                 "[L]Reference[R]$reference\n" +
                 "[L]Status[R]<b>$status</b>\n" +
                 "[L]Paid On[R]$displayDate $displayTime\n" +
+                "[L]Teller[R]$teller\n" +
+                "[C]------------------------------\n" +
+                "[C]Thank you for playing!\n"
+            )
+
+            null
+        } catch (e: Exception) {
+            e.message ?: "Printing failed."
+        }
+    }
+
+    /**
+     * Print refund receipt (Type 3: Refund for Cancelled/Draw)
+     */
+    fun printRefundReceipt(
+        context: Context,
+        reference: String,
+        fight: String,
+        side: String,
+        betAmount: String,
+        refundAmount: String,
+        status: String, // "CANCELLED" or "DRAW"
+        refundDate: String?,
+        refundTime: String?,
+        teller: String,
+        printerAddress: String? = null,
+        systemTitle: String = "SABONG BETTING SYSTEM"
+    ): String? {
+        return try {
+            val connection = if (printerAddress != null) {
+                getConnectionByAddress(context, printerAddress)
+            } else {
+                BluetoothPrintersConnections.selectFirstPaired()
+            } ?: return "No Bluetooth printer found. Please select a printer first."
+
+            val printer = EscPosPrinter(connection, 203, 72f, 32)
+
+            // Use provided date/time or current if not available
+            val displayDate = refundDate ?: SimpleDateFormat("MMM dd, yyyy", Locale.US).format(Date())
+            val displayTime = refundTime ?: SimpleDateFormat("hh:mm a", Locale.US).format(Date())
+
+            printer.printFormattedTextAndCut(
+                "[C]<b>${systemTitle.uppercase()}</b>\n" +
+                "[C]<b><font size='big'>Official Refund Receipt</font></b>\n" +
+                "[C]------------------------------\n" +
+                "[L]Fight No.[R]<b>$fight</b>\n" +
+                "[L]Bet Side[R]<b>$side</b>\n" + 
+                "[C]------------------------------\n" +
+                "[L]Result[R]<b>$status</b>\n" +
+                "[L]Bet Amount[R]P$betAmount\n" +
+                "[C]------------------------------\n" +
+                "[C]<b><font size='big'>TOTAL REFUND</font></b>\n" +
+                "[C]<b><font size='big'>P$refundAmount</font></b>\n" +
+                "[C]------------------------------\n" +
+                "[L]Reference[R]$reference\n" +
+                "[L]Status[R]<b>PAID (REFUNDED)</b>\n" +
+                "[L]Date[R]$displayDate $displayTime\n" +
                 "[L]Teller[R]$teller\n" +
                 "[C]------------------------------\n" +
                 "[C]Thank you for playing!\n"
