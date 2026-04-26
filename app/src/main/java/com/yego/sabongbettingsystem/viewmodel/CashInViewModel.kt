@@ -9,6 +9,7 @@ import com.yego.sabongbettingsystem.data.model.Fight
 import com.yego.sabongbettingsystem.data.model.PlaceBetRequest
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.data.model.CashRequestRequest
+import com.yego.sabongbettingsystem.data.model.RunnerTransactionResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -42,6 +43,9 @@ class CashInViewModel : ViewModel() {
 
     private val _betHistory = MutableStateFlow<List<BetResponse>>(emptyList())
     val betHistory: StateFlow<List<BetResponse>> = _betHistory
+
+    private val _runnerHistory = MutableStateFlow<List<RunnerTransactionResponse>>(emptyList())
+    val runnerHistory: StateFlow<List<RunnerTransactionResponse>> = _runnerHistory
 
     private val _requestSuccess = MutableStateFlow(false)
     val requestSuccess: StateFlow<Boolean> = _requestSuccess
@@ -91,11 +95,20 @@ class CashInViewModel : ViewModel() {
                 } else if (response.code() == 404) {
                     _currentFight.value = null
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    _error.value = "Error ${response.code()}: $errorBody"
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Error ${response.code()}"
+                    }
+                    _error.value = errorMessage
                 }
             } catch (e: Exception) {
-                _error.value = "Cannot connect: ${e.message}"
+                _error.value = "Cannot connect: ${e.message ?: "Unable to reach server"}"
             } finally {
                 _isLoading.value = false
             }
@@ -111,11 +124,36 @@ class CashInViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     _betHistory.value = response.body()?.data ?: emptyList()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    _error.value = "Error ${response.code()}: $errorBody"
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Error ${response.code()}"
+                    }
+                    _error.value = errorMessage
                 }
             } catch (e: Exception) {
-                _error.value = "Cannot connect: ${e.message}"
+                // Silently ignore or handle
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadRunnerHistory(context: Context) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val response = RetrofitClient.api.getRunnerHistory(bearerToken(context))
+                if (response.isSuccessful) {
+                    _runnerHistory.value = response.body() ?: emptyList()
+                }
+            } catch (e: Exception) {
+                // Silently ignore or handle
             } finally {
                 _isLoading.value = false
             }
@@ -131,11 +169,20 @@ class CashInViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     _betResult.value = response.body()
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    _error.value = "Error ${response.code()}: $errorBody"
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Error ${response.code()}"
+                    }
+                    _error.value = errorMessage
                 }
             } catch (e: Exception) {
-                _error.value = "Cannot connect: ${e.message}"
+                _error.value = "Cannot connect: ${e.message ?: "Unable to reach server"}"
             } finally {
                 _isLoading.value = false
             }
@@ -163,16 +210,20 @@ class CashInViewModel : ViewModel() {
                     loadCurrentFight(context)
                     loadBetHistory(context) // Ensure history is updated after placing a bet
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    val message = try {
-                        org.json.JSONObject(errorBody ?: "").getString("message")
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
                     } catch (e: Exception) {
-                        "Error ${response.code()}: $errorBody"
+                        "Error ${response.code()}"
                     }
-                    _error.value = message
+                    _error.value = errorMessage
                 }
             } catch (e: Exception) {
-                _error.value = "Cannot connect: ${e.message}"
+                _error.value = "Cannot connect: ${e.message ?: "Unable to reach server"}"
             } finally {
                 _isLoading.value = false
             }
@@ -193,16 +244,20 @@ class CashInViewModel : ViewModel() {
                 if (response.isSuccessful) {
                     _requestSuccess.value = true
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    val message = try {
-                        org.json.JSONObject(errorBody ?: "").getString("message")
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Request failed. Please try again."
+                        }
                     } catch (e: Exception) {
                         "Request failed. Please try again."
                     }
-                    _error.value = message
+                    _error.value = errorMessage
                 }
             } catch (e: Exception) {
-                _error.value = "Connection error: ${e.message}"
+                _error.value = "Connection error: ${e.message ?: "Unable to reach server"}"
             } finally {
                 _isLoading.value = false
             }

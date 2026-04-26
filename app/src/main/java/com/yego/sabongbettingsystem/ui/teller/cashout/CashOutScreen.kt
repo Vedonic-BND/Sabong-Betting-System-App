@@ -44,6 +44,7 @@ fun CashOutScreen(
     val viewModel = viewModel<CashOutViewModel>()
     val reverbViewModel = viewModel<ReverbViewModel>()
     val fightState by reverbViewModel.fightState.collectAsState()
+    val cashUpdated by reverbViewModel.cashUpdated.collectAsState()
     val payout    by viewModel.payout.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error     by viewModel.error.collectAsState()
@@ -77,6 +78,7 @@ fun CashOutScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadBetHistory(context)
+        reverbViewModel.connect()
     }
 
     // Load system settings
@@ -140,6 +142,13 @@ fun CashOutScreen(
     // refresh history on confirmed
     LaunchedEffect(confirmed) {
         if (confirmed) {
+            viewModel.loadBetHistory(context)
+        }
+    }
+
+    // refresh history when cash status is updated (e.g., winner declared, payout made)
+    LaunchedEffect(cashUpdated) {
+        if (cashUpdated != null) {
             viewModel.loadBetHistory(context)
         }
     }

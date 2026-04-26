@@ -50,37 +50,24 @@ class CashOutViewModel : ViewModel() {
                 val token = bearerToken(context)
                 val response = RetrofitClient.api.getBetHistory(token)
                 if (response.isSuccessful) {
-                    val rawHistory = response.body()?.data ?: emptyList()
-                    
-                    // Enrich history by fetching payout status for each bet
-                    val enrichedHistory = rawHistory.map { bet ->
-                        async {
-                            try {
-                                val payoutRes = RetrofitClient.api.getPayout(token, bet.reference)
-                                if (payoutRes.isSuccessful) {
-                                    val p = payoutRes.body()
-                                    bet.copy(
-                                        winner = p?.winner,
-                                        won = p?.won,
-                                        status = p?.status,
-                                        net_payout = p?.net_payout
-                                    )
-                                } else {
-                                    bet
-                                }
-                            } catch (e: Exception) {
-                                bet
-                            }
-                        }
-                    }.awaitAll()
-
+                    // No need for additional API calls - payout data is already included
+                    val enrichedHistory = response.body()?.data ?: emptyList()
                     _betHistory.value = enrichedHistory
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    _error.value = "Error ${response.code()}: $errorBody"
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Error ${response.code()}"
+                    }
+                    _error.value = errorMessage
                 }
             } catch (e: Exception) {
-                _error.value = "Cannot connect: ${e.message}"
+                // Silently ignore or handle
             } finally {
                 _isLoading.value = false
             }
@@ -111,11 +98,20 @@ class CashOutViewModel : ViewModel() {
                         _payout.value = payout
                     }
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    _error.value = "Error ${response.code()}: $errorBody"
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Error ${response.code()}"
+                    }
+                    _error.value = errorMessage
                 }
             } catch (e: Exception) {
-                _error.value = "Cannot connect: ${e.message}"
+                _error.value = "Cannot connect: ${e.message ?: "Unable to reach server"}"
             } finally {
                 _isLoading.value = false
             }
@@ -136,11 +132,20 @@ class CashOutViewModel : ViewModel() {
                     _payout.value    = null
                     loadBetHistory(context) // refresh history after payout
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    _error.value = "Error ${response.code()}: $errorBody"
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Error ${response.code()}"
+                    }
+                    _error.value = errorMessage
                 }
             } catch (e: Exception) {
-                _error.value = "Cannot connect: ${e.message}"
+                _error.value = "Cannot connect: ${e.message ?: "Unable to reach server"}"
             } finally {
                 _isLoading.value = false
             }

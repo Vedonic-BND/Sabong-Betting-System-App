@@ -57,6 +57,7 @@ fun CashInScreen(
     val connected     by reverbViewModel.connected.collectAsState()
     val reverbFight   by reverbViewModel.fightState.collectAsState()
     val betHistory    by cashInViewModel.betHistory.collectAsState()
+    val runnerHistory by cashInViewModel.runnerHistory.collectAsState()
     val lastBet       by reverbViewModel.lastBet.collectAsState()
     val cashUpdated   by reverbViewModel.cashUpdated.collectAsState()
     val runnerAccepted by reverbViewModel.runnerAccepted.collectAsState()
@@ -75,23 +76,30 @@ fun CashInScreen(
     LaunchedEffect(Unit) {
         cashInViewModel.loadCurrentFight(context)
         cashInViewModel.loadBetHistory(context)
+        cashInViewModel.loadRunnerHistory(context)
         cashOutViewModel.loadBetHistory(context)
         reverbViewModel.connect()
+    }
+
+    // Refresh data when teller cash is updated via Reverb (runner transaction)
+    LaunchedEffect(cashUpdated) {
+        if (cashUpdated != null) {
+            cashInViewModel.loadRunnerHistory(context)
+            cashOutViewModel.loadBetHistory(context)
+        }
     }
 
     // Refresh bet history when a new bet is placed via Reverb
     LaunchedEffect(lastBet) {
         if (lastBet != null) {
-            // Refresh both cash in and cash out histories to reflect the new bet
             cashInViewModel.loadBetHistory(context)
             cashOutViewModel.loadBetHistory(context)
         }
     }
 
-    // Refresh bet history when teller cash is updated (payout made, etc.)
-    LaunchedEffect(cashUpdated) {
-        if (cashUpdated != null) {
-            // Refresh cash out history to reflect payout updates
+    // Refresh cashout history when winner is declared (payouts become available)
+    LaunchedEffect(reverbFight?.winner) {
+        if (reverbFight?.winner != null) {
             cashOutViewModel.loadBetHistory(context)
         }
     }
@@ -299,13 +307,21 @@ fun CashInScreen(
             }
 
             // ── On-Hand Cash Card ────────────────────────
-            // Calculation: Total Cash In - Total Paid Net Payouts
+            // Derivation: (Total In + Total Provided) - (Total Payouts + Total Collected)
             val totalCashIn = betHistory.sumOf { it.receipt.amount.parseCurrency() }
             val totalNetPayouts = cashOutHistory
                 .filter { it.status?.lowercase() == "paid" }
                 .sumOf { it.net_payout.parseCurrency() }
+            
+            val totalProvided = runnerHistory
+                .filter { it.type == "provide" }
+                .sumOf { it.amount.parseCurrency() }
+            
+            val totalCollected = runnerHistory
+                .filter { it.type == "collect" }
+                .sumOf { it.amount.parseCurrency() }
                 
-            val onHandCash = totalCashIn - totalNetPayouts
+            val onHandCash = (totalCashIn + totalProvided) - (totalNetPayouts + totalCollected)
 
             Card(
                 modifier = Modifier.fillMaxWidth().clickable {
@@ -344,7 +360,7 @@ fun CashInScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = "Total In: ₱${String.format(Locale.US, "%,.0f", totalCashIn)} | Payouts: ₱${String.format(Locale.US, "%,.0f", totalNetPayouts)}",
+                            text = "In: ₱${String.format(Locale.US, "%,.0f", totalCashIn + totalProvided)} | Out: ₱${String.format(Locale.US, "%,.0f", totalNetPayouts + totalCollected)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )

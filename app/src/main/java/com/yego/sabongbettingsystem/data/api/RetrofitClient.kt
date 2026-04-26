@@ -17,20 +17,23 @@ object RetrofitClient {
         val request = chain.request().newBuilder()
             .addHeader("Accept", "application/json")
             .addHeader("Content-Type", "application/json")
+            .addHeader("Connection", "close") // Try to disable persistent connections if they are hanging
             .build()
         chain.proceed(request)
     }
 
     private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        // Change to HEADERS for large payloads to avoid overhead and memory issues in Logcat
+        level = HttpLoggingInterceptor.Level.HEADERS
     }
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(jsonHeaderInterceptor)
         .addInterceptor(logging)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(90, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(90, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
 
     val api: ApiService by lazy {

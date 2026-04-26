@@ -79,7 +79,9 @@ class RunnerViewModel : ViewModel() {
     fun setupRealtimeListener(context: Context) {
         ReverbManager.onTellerCashUpdated = { data ->
             // When a teller's cash is updated, refresh the tellers list
-            loadTellers(context)
+            viewModelScope.launch(Dispatchers.Main) {
+                loadTellers(context)
+            }
         }
         
         ReverbManager.onCashRequested = { data ->
@@ -104,17 +106,28 @@ class RunnerViewModel : ViewModel() {
 
     fun loadTellers(context: Context) {
         viewModelScope.launch {
-            // Only show loading indicator if list is empty (first load)
             if (_tellers.value.isEmpty()) _isLoading.value = true
             try {
-                val response = RetrofitClient.api.getTellersCashStatus(bearerToken(context))
+                val token = bearerToken(context)
+                if (token.length < 10) {
+                    _error.value = "Authentication error. Please login again."
+                    return@launch
+                }
+                val response = RetrofitClient.api.getTellersCashStatus(token)
                 if (response.isSuccessful) {
-                    _tellers.value = response.body() ?: emptyList()
+                    // API returns a list directly or wrapped in { "data": [...] }
+                    // Handle the response body based on updated model
+                    val responseBody = response.body()
+                    _tellers.value = responseBody ?: emptyList()
+                    android.util.Log.d("RunnerVM", "Tellers loaded: ${_tellers.value.size}")
                 } else {
-                    // _error.value = "Failed to load tellers"
+                    val errorBody = response.errorBody()?.string()
+                    _error.value = "Failed to load tellers: ${response.code()}"
+                    android.util.Log.e("RunnerVM", "Error loading tellers: $errorBody")
                 }
             } catch (e: Exception) {
-                // _error.value = "Connection error"
+                _error.value = "Connection error: ${e.message}"
+                android.util.Log.e("RunnerVM", "Exception loading tellers", e)
             } finally {
                 _isLoading.value = false
             }
@@ -132,7 +145,7 @@ class RunnerViewModel : ViewModel() {
                     // _error.value = "Failed to load history"
                 }
             } catch (e: Exception) {
-                // _error.value = "Connection error"
+                _error.value = "Connection error"
             } finally {
                 _isLoading.value = false
             }
@@ -176,7 +189,7 @@ class RunnerViewModel : ViewModel() {
             while (true) {
                 loadTellers(context)
                 loadHistory(context)
-                delay(5000) // refresh every 5 seconds
+                delay(10000) // refresh every 10 seconds
             }
         }
     }
@@ -202,25 +215,6 @@ class RunnerViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = "Connection error: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun declineRequest(context: Context, requestId: Int) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-            try {
-                val response = RetrofitClient.api.declineCashRequest(bearerToken(context), requestId)
-                if (response.isSuccessful) {
-                    _incomingRequest.value = null
-                } else {
-                    _error.value = "Failed to decline request"
-                }
-            } catch (e: Exception) {
-                _error.value = "Error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
