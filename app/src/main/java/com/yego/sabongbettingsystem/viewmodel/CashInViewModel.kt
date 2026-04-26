@@ -151,7 +151,8 @@ class CashInViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val response = RetrofitClient.api.getRunnerHistory(bearerToken(context))
+                // Use teller-specific endpoint to get runner transactions for this teller
+                val response = RetrofitClient.api.getTellerRunnerTransactions(bearerToken(context))
                 if (response.isSuccessful) {
                     _runnerHistory.value = response.body() ?: emptyList()
                 }

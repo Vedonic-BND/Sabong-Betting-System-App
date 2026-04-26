@@ -309,11 +309,40 @@ fun CashInScreen(
                 }
             }
 
+            // ── Error ─────────────────────────────────────
+            if (error != null) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text     = error!!,
+                        color    = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(12.dp),
+                        style    = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
             // ── On-Hand Cash Card ────────────────────────
             // Use authoritative value from backend TellerCash model
             val onHandCash = tellerCashStatus?.on_hand_cash?.toDoubleOrNull() ?: 0.0
             val totalCashInValue = tellerCashStatus?.total_cash_in?.toDoubleOrNull() ?: 0.0
             val totalPaidOutValue = tellerCashStatus?.total_paid_out?.toDoubleOrNull() ?: 0.0
+            
+            // Calculate breakdown: runner transactions from history
+            val betInAmount = betHistory.sumOf { it.receipt.amount.parseCurrency() }
+            val payoutAmount = cashOutHistory
+                .filter { it.status?.lowercase() == "paid" }
+                .sumOf { it.net_payout.parseCurrency() }
+            val providedAmount = runnerHistory
+                .filter { it.type == "cash_in" }
+                .sumOf { it.amount.parseCurrency() }
+            val collectedAmount = runnerHistory
+                .filter { it.type == "cash_out" }
+                .sumOf { it.amount.parseCurrency() }
 
             Card(
                 modifier = Modifier.fillMaxWidth().clickable {
@@ -324,38 +353,71 @@ fun CashInScreen(
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.size(48.dp)
+                Column(modifier = Modifier.padding(20.dp)) {
+                    // Header with total
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onPrimary)
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onPrimary)
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = "TOTAL ON-HAND CASH",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "₱${String.format(Locale.US, "%,.2f", onHandCash)}",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         }
                     }
-                    Column {
-                        Text(
-                            text = "TOTAL ON-HAND CASH",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "₱${String.format(Locale.US, "%,.2f", onHandCash)}",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "In: ₱${String.format(Locale.US, "%,.0f", totalCashInValue)} | Out: ₱${String.format(Locale.US, "%,.0f", totalPaidOutValue)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Breakdown section
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Bet in: ₱${String.format(Locale.US, "%,.0f", betInAmount)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                text = "Payout: ₱${String.format(Locale.US, "%,.0f", payoutAmount)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Provided: ₱${String.format(Locale.US, "%,.0f", providedAmount)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                            Text(
+                                text = "Collected: ₱${String.format(Locale.US, "%,.0f", collectedAmount)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
                     }
                 }
             }
@@ -407,23 +469,6 @@ fun CashInScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                }
-            }
-
-            // ── Error ─────────────────────────────────────
-            if (error != null) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text     = error!!,
-                        color    = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(12.dp),
-                        style    = MaterialTheme.typography.bodySmall
-                    )
                 }
             }
 

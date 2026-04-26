@@ -107,6 +107,11 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Response<TellerCashStatusResponse>
 
+    @GET("teller/runner-transactions")
+    suspend fun getTellerRunnerTransactions(
+        @Header("Authorization") token: String
+    ): Response<List<RunnerTransactionResponse>>
+
     // ── Runner ───────────────────────────────────────────
     @GET("runner/tellers")
     suspend fun getTellersCashStatus(
