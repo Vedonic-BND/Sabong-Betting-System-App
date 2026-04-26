@@ -119,6 +119,24 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Response<List<RunnerTransactionResponse>>
 
+    @POST("cash-request")
+    suspend fun requestRunner(
+        @Header("Authorization") token: String,
+        @Body request: CashRequestRequest
+    ): Response<MessageResponse>
+
+    @PATCH("cash-request/{id}/approve")
+    suspend fun acceptCashRequest(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<MessageResponse>
+
+    @PATCH("cash-request/{id}/decline")
+    suspend fun declineCashRequest(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<MessageResponse>
+
     // ── Settings (public) ────────────────────────────────
     @GET("settings")
     suspend fun getSystemSettings(): Response<SystemSettings>

@@ -19,6 +19,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.CashOutViewModel
+import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
@@ -41,6 +42,8 @@ fun CashOutScreen(
     val userStore = remember { UserStore(context) }
     val name      by userStore.name.collectAsState(initial = "Teller")
     val viewModel = viewModel<CashOutViewModel>()
+    val reverbViewModel = viewModel<ReverbViewModel>()
+    val fightState by reverbViewModel.fightState.collectAsState()
     val payout    by viewModel.payout.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error     by viewModel.error.collectAsState()
@@ -137,6 +140,13 @@ fun CashOutScreen(
     // refresh history on confirmed
     LaunchedEffect(confirmed) {
         if (confirmed) {
+            viewModel.loadBetHistory(context)
+        }
+    }
+
+    // refresh history when winner is declared
+    LaunchedEffect(fightState) {
+        if (fightState?.winner != null) {
             viewModel.loadBetHistory(context)
         }
     }

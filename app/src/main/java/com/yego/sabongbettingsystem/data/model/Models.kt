@@ -146,6 +146,12 @@ data class TellerCashStatus(
     val last_transaction: String?
 )
 
+data class CashRequestRequest(
+    val type: String,  // "cash_in" or "cash_out"
+    val amount: Double,
+    val reason: String? = null
+)
+
 data class SystemSettings(
     val display_title: String
 )

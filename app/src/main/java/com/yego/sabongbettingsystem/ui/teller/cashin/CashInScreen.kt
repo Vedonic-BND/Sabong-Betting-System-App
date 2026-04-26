@@ -1,6 +1,11 @@
 package com.yego.sabongbettingsystem.ui.teller.cashin
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -8,6 +13,9 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.AdfScanner
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +35,9 @@ import com.yego.sabongbettingsystem.ui.utils.parseCurrency
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.yego.sabongbettingsystem.viewmodel.TellerNotification
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,9 +59,18 @@ fun CashInScreen(
     val betHistory    by cashInViewModel.betHistory.collectAsState()
     val lastBet       by reverbViewModel.lastBet.collectAsState()
     val cashUpdated   by reverbViewModel.cashUpdated.collectAsState()
+    val runnerAccepted by reverbViewModel.runnerAccepted.collectAsState()
+    val notifications by cashInViewModel.notifications.collectAsState()
     
     val cashOutViewModel = viewModel<CashOutViewModel>()
     val cashOutHistory by cashOutViewModel.betHistory.collectAsState()
+
+    var amount       by remember { mutableStateOf("") }
+    var selectedSide by remember { mutableStateOf("") }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    var showRunnerNotification by remember { mutableStateOf(false) }
+    var acceptedRunnerName by remember { mutableStateOf("") }
+    var showNotificationSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         cashInViewModel.loadCurrentFight(context)
@@ -77,9 +96,30 @@ fun CashInScreen(
         }
     }
 
-    var amount       by remember { mutableStateOf("") }
-    var selectedSide by remember { mutableStateOf("") }
-    var showConfirmDialog by remember { mutableStateOf(false) }
+    // Show notification when a runner accepts the request
+    LaunchedEffect(runnerAccepted) {
+        if (runnerAccepted != null) {
+            val runnerName = runnerAccepted!!.optString("runner_name", "A runner")
+            acceptedRunnerName = runnerName
+            showRunnerNotification = true
+            
+            // Add to notification history
+            cashInViewModel.addNotification(
+                title = "Runner Accepted",
+                message = "$runnerName is on the way to assist you.",
+                data = runnerAccepted
+            )
+            
+            // Clear the state in ReverbViewModel so it doesn't re-trigger on recomposition
+            reverbViewModel.clearRunnerAccepted()
+            // Reset the request success state in CashInViewModel
+            cashInViewModel.clearRequestSuccess()
+            
+            // Auto-dismiss after 3 seconds
+            delay(3000)
+            showRunnerNotification = false
+        }
+    }
 
     val meronOpen = when {
         reverbFight?.meronStatus?.isNotEmpty() == true -> reverbFight!!.meronStatus == "open"
@@ -158,6 +198,19 @@ fun CashInScreen(
         )
     }
 
+    if (showNotificationSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showNotificationSheet = false },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            NotificationSheetContent(
+                notifications = notifications,
+                onClear = { cashInViewModel.clearNotifications() },
+                onMarkAsRead = { cashInViewModel.markNotificationAsRead(it) }
+            )
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -174,6 +227,18 @@ fun CashInScreen(
                 actions = {
                     WsStatusBadge(connected = connected)
                     Spacer(Modifier.width(8.dp))
+                    
+                    val unreadCount = notifications.count { !it.isRead }
+                    IconButton(onClick = { showNotificationSheet = true }) {
+                        BadgedBox(badge = {
+                            if (unreadCount > 0) {
+                                Badge { Text(unreadCount.toString()) }
+                            }
+                        }) {
+                            Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                        }
+                    }
+
                     IconButton(onClick = { navController.navigate("printer_settings") }) {
                         Icon(Icons.Default.AdfScanner, contentDescription = "Printer Settings")
                     }
@@ -193,6 +258,46 @@ fun CashInScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
+            // ── Runner Accepted Notification ────────────────────
+            if (showRunnerNotification) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Runner Accepted!",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "$acceptedRunnerName is on the way.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        IconButton(onClick = { showRunnerNotification = false }) {
+                            Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+
             // ── On-Hand Cash Card ────────────────────────
             // Calculation: Total Cash In - Total Paid Net Payouts
             val totalCashIn = betHistory.sumOf { it.receipt.amount.parseCurrency() }
@@ -203,7 +308,9 @@ fun CashInScreen(
             val onHandCash = totalCashIn - totalNetPayouts
 
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().clickable {
+                    navController.navigate("call_runner")
+                },
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
                 ),
@@ -542,6 +649,96 @@ fun CashInScreen(
                 Icon(Icons.Default.History, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("View Transaction History", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun NotificationSheetContent(
+    notifications: List<TellerNotification>,
+    onClear: () -> Unit,
+    onMarkAsRead: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 300.dp, max = 500.dp)
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Alert History", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (notifications.isNotEmpty()) {
+                TextButton(onClick = onClear) {
+                    Text("Clear All")
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        if (notifications.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No alerts found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(notifications) { notification ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (notification.isRead) 
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            else 
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        onClick = { onMarkAsRead(notification.id) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications, 
+                                contentDescription = null,
+                                tint = if (notification.isRead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    notification.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    notification.message,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    notification.timestamp,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                            if (!notification.isRead) {
+                                Box(
+                                    modifier = Modifier.size(8.dp).background(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = CircleShape
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

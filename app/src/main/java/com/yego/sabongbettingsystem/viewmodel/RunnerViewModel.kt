@@ -16,6 +16,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import kotlinx.coroutines.Dispatchers
+import java.text.SimpleDateFormat
+import java.util.*
+
+data class RunnerNotification(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String,
+    val message: String,
+    val timestamp: String,
+    val data: JSONObject? = null,
+    var isRead: Boolean = false
+)
 
 class RunnerViewModel : ViewModel() {
 
@@ -34,6 +46,12 @@ class RunnerViewModel : ViewModel() {
     private val _successMessage = MutableStateFlow<String?>(null)
     val successMessage: StateFlow<String?> = _successMessage
 
+    private val _incomingRequest = MutableStateFlow<JSONObject?>(null)
+    val incomingRequest: StateFlow<JSONObject?> = _incomingRequest
+
+    private val _notifications = MutableStateFlow<List<RunnerNotification>>(emptyList())
+    val notifications: StateFlow<List<RunnerNotification>> = _notifications
+
     private suspend fun bearerToken(context: Context): String {
         val token = UserStore(context).token.first() ?: ""
         return "Bearer $token"
@@ -44,10 +62,43 @@ class RunnerViewModel : ViewModel() {
         _successMessage.value = null
     }
 
+    fun clearIncomingRequest() {
+        _incomingRequest.value = null
+    }
+
+    fun markNotificationAsRead(id: String) {
+        _notifications.value = _notifications.value.map {
+            if (it.id == id) it.copy(isRead = true) else it
+        }
+    }
+
+    fun clearNotifications() {
+        _notifications.value = emptyList()
+    }
+
     fun setupRealtimeListener(context: Context) {
         ReverbManager.onTellerCashUpdated = { data ->
             // When a teller's cash is updated, refresh the tellers list
             loadTellers(context)
+        }
+        
+        ReverbManager.onCashRequested = { data ->
+            viewModelScope.launch(Dispatchers.Main) {
+                _incomingRequest.value = data
+                
+                // Add to notification history
+                val tellerName = data.optString("teller_name", "A teller")
+                val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                val timestamp = sdf.format(Date())
+                
+                val newNotification = RunnerNotification(
+                    title = "Runner Requested",
+                    message = "$tellerName needs assistance.",
+                    timestamp = timestamp,
+                    data = data
+                )
+                _notifications.value = listOf(newNotification) + _notifications.value
+            }
         }
     }
 
@@ -132,6 +183,48 @@ class RunnerViewModel : ViewModel() {
 
     fun stopAutoRefresh() {
         refreshJob?.cancel()
+    }
+
+    fun acceptRequest(context: Context, requestId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val response = RetrofitClient.api.acceptCashRequest(bearerToken(context), requestId)
+                if (response.isSuccessful) {
+                    _successMessage.value = "Request accepted! Heading to the teller now."
+                    _incomingRequest.value = null
+                    // Refresh tellers and history
+                    loadTellers(context)
+                    loadHistory(context)
+                } else {
+                    _error.value = "Failed to accept request"
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun declineRequest(context: Context, requestId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val response = RetrofitClient.api.declineCashRequest(bearerToken(context), requestId)
+                if (response.isSuccessful) {
+                    _incomingRequest.value = null
+                } else {
+                    _error.value = "Failed to decline request"
+                }
+            } catch (e: Exception) {
+                _error.value = "Error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun logout(context: Context, onDone: () -> Unit) {

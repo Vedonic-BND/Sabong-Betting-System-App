@@ -33,9 +33,25 @@ class ReverbViewModel : ViewModel() {
     private val _cashUpdated = MutableStateFlow<JSONObject?>(null)
     val cashUpdated: StateFlow<JSONObject?> = _cashUpdated
 
+    private val _runnerAccepted = MutableStateFlow<JSONObject?>(null)
+    val runnerAccepted: StateFlow<JSONObject?> = _runnerAccepted
+
+    private val _runnerDeclined = MutableStateFlow<JSONObject?>(null)
+    val runnerDeclined: StateFlow<JSONObject?> = _runnerDeclined
+
     fun resetState() {
         _fightState.value = null
         _lastBet.value = null
+        _runnerAccepted.value = null
+        _runnerDeclined.value = null
+    }
+
+    fun clearRunnerAccepted() {
+        _runnerAccepted.value = null
+    }
+
+    fun clearRunnerDeclined() {
+        _runnerDeclined.value = null
     }
 
     fun connect() {
@@ -92,6 +108,18 @@ class ReverbViewModel : ViewModel() {
         ReverbManager.onTellerCashUpdated = { data ->
             viewModelScope.launch(Dispatchers.Main) {
                 _cashUpdated.value = data
+            }
+        }
+
+        ReverbManager.onRunnerAccepted = { data ->
+            viewModelScope.launch(Dispatchers.Main) {
+                _runnerAccepted.value = data
+            }
+        }
+
+        ReverbManager.onRunnerDeclined = { data ->
+            viewModelScope.launch(Dispatchers.Main) {
+                _runnerDeclined.value = data
             }
         }
 

@@ -8,10 +8,23 @@ import com.yego.sabongbettingsystem.data.model.BetResponse
 import com.yego.sabongbettingsystem.data.model.Fight
 import com.yego.sabongbettingsystem.data.model.PlaceBetRequest
 import com.yego.sabongbettingsystem.data.store.UserStore
+import com.yego.sabongbettingsystem.data.model.CashRequestRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.*
+
+data class TellerNotification(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String,
+    val message: String,
+    val timestamp: String,
+    val data: JSONObject? = null,
+    var isRead: Boolean = false
+)
 
 class CashInViewModel : ViewModel() {
 
@@ -30,6 +43,12 @@ class CashInViewModel : ViewModel() {
     private val _betHistory = MutableStateFlow<List<BetResponse>>(emptyList())
     val betHistory: StateFlow<List<BetResponse>> = _betHistory
 
+    private val _requestSuccess = MutableStateFlow(false)
+    val requestSuccess: StateFlow<Boolean> = _requestSuccess
+
+    private val _notifications = MutableStateFlow<List<TellerNotification>>(emptyList())
+    val notifications: StateFlow<List<TellerNotification>> = _notifications
+
     private suspend fun bearerToken(context: Context): String {
         val token = UserStore(context).token.first() ?: ""
         return "Bearer $token"
@@ -37,6 +56,29 @@ class CashInViewModel : ViewModel() {
 
     fun clearResult() { _betResult.value = null }
     fun clearError()  { _error.value = null }
+    fun clearRequestSuccess() { _requestSuccess.value = false }
+
+    fun addNotification(title: String, message: String, data: JSONObject? = null) {
+        val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+        val timestamp = sdf.format(Date())
+        val newNotification = TellerNotification(
+            title = title,
+            message = message,
+            timestamp = timestamp,
+            data = data
+        )
+        _notifications.value = listOf(newNotification) + _notifications.value
+    }
+
+    fun markNotificationAsRead(id: String) {
+        _notifications.value = _notifications.value.map {
+            if (it.id == id) it.copy(isRead = true) else it
+        }
+    }
+
+    fun clearNotifications() {
+        _notifications.value = emptyList()
+    }
 
     fun loadCurrentFight(context: Context) {
         viewModelScope.launch {
@@ -131,6 +173,36 @@ class CashInViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = "Cannot connect: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun requestRunner(context: Context) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val request = CashRequestRequest(
+                    type = "cash_in",
+                    amount = 1.0, // Satisfy server validation: amount must be >= 1
+                    reason = "Runner requested for assistance/remittance"
+                )
+                val response = RetrofitClient.api.requestRunner(bearerToken(context), request)
+                if (response.isSuccessful) {
+                    _requestSuccess.value = true
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    val message = try {
+                        org.json.JSONObject(errorBody ?: "").getString("message")
+                    } catch (e: Exception) {
+                        "Request failed. Please try again."
+                    }
+                    _error.value = message
+                }
+            } catch (e: Exception) {
+                _error.value = "Connection error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

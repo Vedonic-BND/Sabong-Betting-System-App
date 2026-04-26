@@ -1,8 +1,16 @@
 package com.yego.sabongbettingsystem.ui.runner
 
+import android.content.Context
+import android.media.RingtoneManager
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -27,6 +35,8 @@ import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.RunnerViewModel
 import com.yego.sabongbettingsystem.ui.components.QrScannerView
 import com.yego.sabongbettingsystem.data.realtime.ReverbManager
+import com.yego.sabongbettingsystem.viewmodel.RunnerNotification
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,9 +48,11 @@ fun RunnerScreen(
     val viewModel = viewModel<RunnerViewModel>()
     val tellers by viewModel.tellers.collectAsState()
     val history by viewModel.history.collectAsState()
+    val notifications by viewModel.notifications.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
     val success by viewModel.successMessage.collectAsState()
+    val incomingRequest by viewModel.incomingRequest.collectAsState()
     val userStore = remember { UserStore(context) }
     val runnerName by userStore.name.collectAsState(initial = "Runner")
 
@@ -55,6 +67,55 @@ fun RunnerScreen(
         viewModel.loadHistory(context)
         viewModel.setupRealtimeListener(context)
         ReverbManager.connect()
+    }
+
+    // Auto-clear messages after 3 seconds
+    LaunchedEffect(error) {
+        if (error != null) {
+            delay(3000)
+            viewModel.clearMessages()
+        }
+    }
+
+    LaunchedEffect(success) {
+        if (success != null) {
+            delay(3000)
+            viewModel.clearMessages()
+        }
+    }
+
+    // ── Sound and Vibration Effect ──
+    LaunchedEffect(incomingRequest) {
+        if (incomingRequest != null) {
+            // Play notification sound
+            try {
+                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                val r = RingtoneManager.getRingtone(context, notification)
+                r.play()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // Vibrate
+            try {
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                    vibratorManager.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(500)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     Scaffold(
@@ -91,6 +152,20 @@ fun RunnerScreen(
                 NavigationBarItem(
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 },
+                    icon = { 
+                        BadgedBox(badge = {
+                            if (notifications.any { !it.isRead }) {
+                                Badge { Text(notifications.count { !it.isRead }.toString()) }
+                            }
+                        }) {
+                            Icon(Icons.Default.Notifications, contentDescription = null)
+                        }
+                    },
+                    label = { Text("Alerts") }
+                )
+                NavigationBarItem(
+                    selected = selectedTabIndex == 2,
+                    onClick = { selectedTabIndex = 2 },
                     icon = { Icon(Icons.Default.History, contentDescription = null) },
                     label = { Text("History") }
                 )
@@ -98,6 +173,84 @@ fun RunnerScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            
+            // ── Real-time Notification ──
+            if (incomingRequest != null) {
+                Card(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.NotificationsActive, null, tint = MaterialTheme.colorScheme.primary)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "RUNNER REQUESTED!",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                val tellerName = incomingRequest!!.optString("teller_name", "A teller")
+                                Text(
+                                    text = "$tellerName needs assistance.",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            IconButton(onClick = { viewModel.clearIncomingRequest() }) {
+                                Icon(Icons.Default.Close, null)
+                            }
+                        }
+                        
+                        // Accept and Decline buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { 
+                                    val requestId = incomingRequest!!.optInt("id", -1)
+                                    if (requestId > 0) {
+                                        viewModel.acceptRequest(context, requestId)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isLoading
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("ACCEPT", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = { 
+                                    // Just clear locally as requested
+                                    viewModel.clearIncomingRequest()
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isLoading
+                            ) {
+                                Text("DECLINE", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+
             if (error != null) {
                 ErrorMessage(error!!, onDismiss = { viewModel.clearMessages() })
             }
@@ -183,6 +336,13 @@ fun RunnerScreen(
                     }
                 }
                 1 -> {
+                    NotificationHistoryList(
+                        notifications = notifications,
+                        onClear = { viewModel.clearNotifications() },
+                        onMarkAsRead = { viewModel.markNotificationAsRead(it) }
+                    )
+                }
+                2 -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         // ── History Summary Card ──
                         val totalCollected = history.filter { it.type == "collect" }.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
@@ -256,6 +416,90 @@ fun RunnerScreen(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun NotificationHistoryList(
+    notifications: List<RunnerNotification>,
+    onClear: () -> Unit,
+    onMarkAsRead: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Notification Alerts", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (notifications.isNotEmpty()) {
+                TextButton(onClick = onClear) {
+                    Text("Clear All")
+                }
+            }
+        }
+
+        if (notifications.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("No recent notifications.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(notifications) { notification ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (notification.isRead) 
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            else 
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        onClick = { onMarkAsRead(notification.id) }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications, 
+                                contentDescription = null,
+                                tint = if (notification.isRead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    notification.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    notification.message,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    notification.timestamp,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                            if (!notification.isRead) {
+                                Box(
+                                    modifier = Modifier.size(8.dp).background(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = CircleShape
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

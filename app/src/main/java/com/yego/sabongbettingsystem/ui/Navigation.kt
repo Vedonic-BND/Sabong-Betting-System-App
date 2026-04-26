@@ -16,6 +16,7 @@ import com.yego.sabongbettingsystem.ui.teller.TellerModeScreen
 import com.yego.sabongbettingsystem.ui.teller.cashin.CashInScreen
 import com.yego.sabongbettingsystem.ui.teller.cashin.ReceiptScreen
 import com.yego.sabongbettingsystem.ui.teller.cashin.TellerTransactionHistoryScreen
+import com.yego.sabongbettingsystem.ui.teller.cashin.RequestRunnerScreen
 import com.yego.sabongbettingsystem.ui.teller.cashout.CashOutScreen
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
 import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
@@ -169,6 +170,17 @@ fun AppNavigation() {
             }
             val cashInViewModel = viewModel<CashInViewModel>(cashInEntry)
             TellerTransactionHistoryScreen(
+                navController = navController,
+                viewModel = cashInViewModel
+            )
+        }
+
+        composable("call_runner") { backStackEntry ->
+            val cashInEntry = remember(backStackEntry) {
+                navController.getBackStackEntry("cashin")
+            }
+            val cashInViewModel = viewModel<CashInViewModel>(cashInEntry)
+            RequestRunnerScreen(
                 navController = navController,
                 viewModel = cashInViewModel
             )
