@@ -147,6 +147,15 @@ data class TellerCashStatus(
 )
 
 data class TellerCashStatusResponse(
+    val teller_id: Int,
+    val teller_name: String,
+    val total_cash_in: String,
+    val total_paid_out: String,
+    val on_hand_cash: String,
+    val last_updated: String
+)
+
+data class TellerCashStatusListResponse(
     val data: List<TellerCashStatus>
 )
 

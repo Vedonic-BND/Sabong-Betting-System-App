@@ -62,6 +62,7 @@ fun CashInScreen(
     val cashUpdated   by reverbViewModel.cashUpdated.collectAsState()
     val runnerAccepted by reverbViewModel.runnerAccepted.collectAsState()
     val notifications by cashInViewModel.notifications.collectAsState()
+    val tellerCashStatus by cashInViewModel.tellerCashStatus.collectAsState()
     
     val cashOutViewModel = viewModel<CashOutViewModel>()
     val cashOutHistory by cashOutViewModel.betHistory.collectAsState()
@@ -77,6 +78,7 @@ fun CashInScreen(
         cashInViewModel.loadCurrentFight(context)
         cashInViewModel.loadBetHistory(context)
         cashInViewModel.loadRunnerHistory(context)
+        cashInViewModel.loadTellerCashStatus(context)
         cashOutViewModel.loadBetHistory(context)
         reverbViewModel.connect()
     }
@@ -85,6 +87,7 @@ fun CashInScreen(
     LaunchedEffect(cashUpdated) {
         if (cashUpdated != null) {
             cashInViewModel.loadRunnerHistory(context)
+            cashInViewModel.loadTellerCashStatus(context)
             cashOutViewModel.loadBetHistory(context)
         }
     }
@@ -307,21 +310,10 @@ fun CashInScreen(
             }
 
             // ── On-Hand Cash Card ────────────────────────
-            // Derivation: (Total In + Total Provided) - (Total Payouts + Total Collected)
-            val totalCashIn = betHistory.sumOf { it.receipt.amount.parseCurrency() }
-            val totalNetPayouts = cashOutHistory
-                .filter { it.status?.lowercase() == "paid" }
-                .sumOf { it.net_payout.parseCurrency() }
-            
-            val totalProvided = runnerHistory
-                .filter { it.type == "provide" }
-                .sumOf { it.amount.parseCurrency() }
-            
-            val totalCollected = runnerHistory
-                .filter { it.type == "collect" }
-                .sumOf { it.amount.parseCurrency() }
-                
-            val onHandCash = (totalCashIn + totalProvided) - (totalNetPayouts + totalCollected)
+            // Use authoritative value from backend TellerCash model
+            val onHandCash = tellerCashStatus?.on_hand_cash?.toDoubleOrNull() ?: 0.0
+            val totalCashInValue = tellerCashStatus?.total_cash_in?.toDoubleOrNull() ?: 0.0
+            val totalPaidOutValue = tellerCashStatus?.total_paid_out?.toDoubleOrNull() ?: 0.0
 
             Card(
                 modifier = Modifier.fillMaxWidth().clickable {
@@ -360,7 +352,7 @@ fun CashInScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = "In: ₱${String.format(Locale.US, "%,.0f", totalCashIn + totalProvided)} | Out: ₱${String.format(Locale.US, "%,.0f", totalNetPayouts + totalCollected)}",
+                            text = "In: ₱${String.format(Locale.US, "%,.0f", totalCashInValue)} | Out: ₱${String.format(Locale.US, "%,.0f", totalPaidOutValue)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                         )

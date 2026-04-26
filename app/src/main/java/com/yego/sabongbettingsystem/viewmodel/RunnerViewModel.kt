@@ -121,12 +121,21 @@ class RunnerViewModel : ViewModel() {
                     _tellers.value = responseBody ?: emptyList()
                     android.util.Log.d("RunnerVM", "Tellers loaded: ${_tellers.value.size}")
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    _error.value = "Failed to load tellers: ${response.code()}"
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    val errorMsg = try {
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", "Failed to load tellers")
+                        } else {
+                            "Failed to load tellers: ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Failed to load tellers: ${response.code()}"
+                    }
+                    _error.value = errorMsg
                     android.util.Log.e("RunnerVM", "Error loading tellers: $errorBody")
                 }
             } catch (e: Exception) {
-                _error.value = "Connection error: ${e.message}"
+                _error.value = "Connection error: Unable to reach server"
                 android.util.Log.e("RunnerVM", "Exception loading tellers", e)
             } finally {
                 _isLoading.value = false
@@ -157,23 +166,31 @@ class RunnerViewModel : ViewModel() {
             _isLoading.value = true
             clearMessages()
             try {
-                val request = RunnerTransactionRequest(tellerId, amount, type)
+                // Convert collect/provide to cash_in/cash_out for API
+                val apiType = if (type == "collect") "cash_out" else "cash_in"
+                val request = RunnerTransactionRequest(tellerId, amount, apiType)
                 val response = RetrofitClient.api.createRunnerTransaction(bearerToken(context), request)
                 if (response.isSuccessful) {
                     _successMessage.value = "Transaction successful"
                     loadTellers(context)
                     loadHistory(context)
                 } else {
-                    val errorBody = response.errorBody()?.string()
+                    val errorBody = response.errorBody()?.string() ?: ""
                     val message = try {
-                        org.json.JSONObject(errorBody ?: "").getString("message")
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", "Transaction failed")
+                        } else {
+                            "Transaction failed: Error ${response.code()}"
+                        }
                     } catch (e: Exception) {
                         "Transaction failed"
                     }
                     _error.value = message
+                    android.util.Log.e("RunnerVM", "Transaction error: $errorBody")
                 }
             } catch (e: Exception) {
-                _error.value = "Connection error"
+                _error.value = "Connection error: Unable to reach server"
+                android.util.Log.e("RunnerVM", "Exception creating transaction", e)
             } finally {
                 _isLoading.value = false
             }

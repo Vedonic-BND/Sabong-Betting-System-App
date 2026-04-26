@@ -345,8 +345,8 @@ fun RunnerScreen(
                 2 -> {
                     Column(modifier = Modifier.fillMaxSize()) {
                         // ── History Summary Card ──
-                        val totalCollected = history.filter { it.type == "collect" }.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
-                        val totalProvided = history.filter { it.type == "provide" }.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
+                        val totalCollected = history.filter { it.type == "cash_out" }.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
+                        val totalProvided = history.filter { it.type == "cash_in" }.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
                         
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -375,25 +375,45 @@ fun RunnerScreen(
 
         if (showTransactionDialog != null) {
             val (teller, type) = showTransactionDialog!!
+            val tellerOnHandAmount = teller.on_hand_cash.toDoubleOrNull() ?: 0.0
+            val inputAmount = amountText.toDoubleOrNull() ?: 0.0
+            val isCollect = type == "collect"
+            val isAmountValid = inputAmount > 0 && (!isCollect || inputAmount <= tellerOnHandAmount)
+            
             AlertDialog(
                 onDismissRequest = { showTransactionDialog = null; amountText = "" },
-                title = { Text(if (type == "collect") "Collect Cash" else "Provide Cash") },
+                title = { Text(if (isCollect) "Collect Cash" else "Provide Cash") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Teller: ${teller.name}")
                         Text("Current On-hand: ₱${teller.on_hand_cash}")
                         OutlinedTextField(
                             value = amountText,
-                            onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) amountText = it },
+                            onValueChange = { input ->
+                                // Filter to allow only digits and at most one decimal point
+                                val filtered = input.filter { it.isDigit() || it == '.' }
+                                if (filtered.count { it == '.' } <= 1) {
+                                    amountText = filtered
+                                }
+                            },
                             label = { Text("Amount") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth()
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = isCollect && inputAmount > tellerOnHandAmount && amountText.isNotBlank()
                         )
+                        if (isCollect && inputAmount > tellerOnHandAmount && amountText.isNotBlank()) {
+                            Text(
+                                "Cannot collect more than ₱${teller.on_hand_cash}",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
                 },
                 confirmButton = {
                     Button(
                         onClick = {
+                            // Convert amount to Double
                             val amount = amountText.toDoubleOrNull() ?: 0.0
                             if (amount > 0) {
                                 viewModel.createTransaction(context, teller.id, amount, type)
@@ -401,7 +421,7 @@ fun RunnerScreen(
                                 amountText = ""
                             }
                         },
-                        enabled = amountText.isNotBlank() && !isLoading
+                        enabled = isAmountValid && !isLoading
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
@@ -600,7 +620,7 @@ fun HistoryList(history: List<RunnerTransactionResponse>) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        val isCollect = item.type == "collect"
+                        val isCollect = item.type == "cash_out"
                         Icon(
                             if (isCollect) Icons.AutoMirrored.Filled.CallReceived else Icons.AutoMirrored.Filled.CallMade,
                             contentDescription = null,

@@ -53,6 +53,9 @@ class CashInViewModel : ViewModel() {
     private val _notifications = MutableStateFlow<List<TellerNotification>>(emptyList())
     val notifications: StateFlow<List<TellerNotification>> = _notifications
 
+    private val _tellerCashStatus = MutableStateFlow<com.yego.sabongbettingsystem.data.model.TellerCashStatusResponse?>(null)
+    val tellerCashStatus: StateFlow<com.yego.sabongbettingsystem.data.model.TellerCashStatusResponse?> = _tellerCashStatus
+
     private suspend fun bearerToken(context: Context): String {
         val token = UserStore(context).token.first() ?: ""
         return "Bearer $token"
@@ -156,6 +159,19 @@ class CashInViewModel : ViewModel() {
                 // Silently ignore or handle
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadTellerCashStatus(context: Context) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.api.getTellerCashStatus(bearerToken(context))
+                if (response.isSuccessful) {
+                    _tellerCashStatus.value = response.body()
+                }
+            } catch (e: Exception) {
+                // Silently ignore or handle
             }
         }
     }

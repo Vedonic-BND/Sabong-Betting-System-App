@@ -102,6 +102,11 @@ interface ApiService {
         @Path("reference") reference: String
     ): Response<MessageResponse>
 
+    @GET("teller/cash-status")
+    suspend fun getTellerCashStatus(
+        @Header("Authorization") token: String
+    ): Response<TellerCashStatusResponse>
+
     // ── Runner ───────────────────────────────────────────
     @GET("runner/tellers")
     suspend fun getTellersCashStatus(
