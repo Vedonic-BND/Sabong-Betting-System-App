@@ -76,6 +76,66 @@ class RunnerViewModel : ViewModel() {
         _notifications.value = emptyList()
     }
 
+    fun addNotification(title: String, message: String, data: org.json.JSONObject? = null, context: android.content.Context? = null) {
+        val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+        val timestamp = sdf.format(Date())
+        val newNotification = RunnerNotification(
+            title = title,
+            message = message,
+            timestamp = timestamp,
+            data = data
+        )
+        _notifications.value = listOf(newNotification) + _notifications.value
+
+        // Save to database
+        if (context != null) {
+            viewModelScope.launch {
+                try {
+                    val notificationRequest = com.yego.sabongbettingsystem.data.model.NotificationRequest(
+                        title = title,
+                        message = message,
+                        data = data?.toString()
+                    )
+                    val token = bearerToken(context)
+                    RetrofitClient.api.saveNotification(token, notificationRequest)
+                } catch (e: Exception) {
+                    android.util.Log.e("RunnerVM", "Failed to save notification to database", e)
+                }
+            }
+        }
+    }
+
+    fun loadSavedNotifications(context: Context) {
+        viewModelScope.launch {
+            try {
+                val token = bearerToken(context)
+                android.util.Log.d("RunnerVM", "Fetching notifications with token: ${token.take(20)}...")
+                val response = RetrofitClient.api.getNotifications(token)
+                android.util.Log.d("RunnerVM", "Notifications response code: ${response.code()}")
+                if (response.isSuccessful) {
+                    val savedNotifications = response.body()?.map { notif ->
+                        android.util.Log.d("RunnerVM", "Loaded notification: ${notif.title} - ${notif.message}")
+                        RunnerNotification(
+                            id = notif.id.toString(),
+                            title = notif.title,
+                            message = notif.message,
+                            timestamp = notif.timestamp,
+                            data = try { org.json.JSONObject(notif.data ?: "{}") } catch (e: Exception) { null },
+                            isRead = notif.is_read
+                        )
+                    } ?: emptyList()
+                    android.util.Log.d("RunnerVM", "Total notifications loaded: ${savedNotifications.size}")
+                    _notifications.value = savedNotifications
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    android.util.Log.e("RunnerVM", "Failed to load notifications: ${response.code()} - $errorBody")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("RunnerVM", "Failed to load saved notifications", e)
+            }
+        }
+    }
+
     fun setupRealtimeListener(context: Context) {
         ReverbManager.onTellerCashUpdated = { data ->
             // When a teller's cash is updated, refresh the tellers list
@@ -88,18 +148,39 @@ class RunnerViewModel : ViewModel() {
             viewModelScope.launch(Dispatchers.Main) {
                 _incomingRequest.value = data
                 
-                // Add to notification history
+                // Add to notification history (will be saved to database)
                 val tellerName = data.optString("teller_name", "A teller")
-                val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-                val timestamp = sdf.format(Date())
+                val requestType = data.optString("request_type", "assistance")
+                val customMessage = data.optString("custom_message", "")
                 
-                val newNotification = RunnerNotification(
+                val displayMessage = when (requestType) {
+                    "assistance" -> "Assistance needed at counter"
+                    "need_cash" -> "Runner needed - Need cash"
+                    "collect_cash" -> "Runner needed - Collect excess cash"
+                    "other" -> "Custom request: $customMessage"
+                    else -> "Assistance needed at counter"
+                }
+                
+                addNotification(
                     title = "Runner Requested",
-                    message = "$tellerName needs assistance.",
-                    timestamp = timestamp,
-                    data = data
+                    message = "$tellerName - $displayMessage",
+                    data = data,
+                    context = context
                 )
-                _notifications.value = listOf(newNotification) + _notifications.value
+            }
+        }
+
+        ReverbManager.onRunnerAccepted = { data ->
+            viewModelScope.launch(Dispatchers.Main) {
+                val assignedRunnerName = data.optString("runner_name", "A runner")
+                val tellerName = data.optString("teller_name", "A teller")
+                
+                addNotification(
+                    title = "Request Assigned",
+                    message = "$assignedRunnerName has been assigned to $tellerName.",
+                    data = data,
+                    context = context
+                )
             }
         }
     }
@@ -215,20 +296,22 @@ class RunnerViewModel : ViewModel() {
         refreshJob?.cancel()
     }
 
-    fun acceptRequest(context: Context, requestId: Int) {
+    fun acceptRequest(context: Context, tellerId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                val response = RetrofitClient.api.acceptCashRequest(bearerToken(context), requestId)
+                val response = RetrofitClient.api.acceptAssistance(bearerToken(context), tellerId)
                 if (response.isSuccessful) {
-                    _successMessage.value = "Request accepted! Heading to the teller now."
+                    _successMessage.value = "Request accepted! You have 15 seconds."
                     _incomingRequest.value = null
                     // Refresh tellers and history
                     loadTellers(context)
                     loadHistory(context)
+                    loadSavedNotifications(context)
                 } else {
-                    _error.value = "Failed to accept request"
+                    val errorBody = response.errorBody()?.string()
+                    _error.value = "Failed to accept: $errorBody"
                 }
             } catch (e: Exception) {
                 _error.value = "Connection error: ${e.message}"

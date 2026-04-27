@@ -33,7 +33,6 @@ import com.yego.sabongbettingsystem.data.model.RunnerTransactionResponse
 import com.yego.sabongbettingsystem.data.model.TellerCashStatus
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.viewmodel.RunnerViewModel
-import com.yego.sabongbettingsystem.ui.components.QrScannerView
 import com.yego.sabongbettingsystem.data.realtime.ReverbManager
 import com.yego.sabongbettingsystem.viewmodel.RunnerNotification
 import kotlinx.coroutines.delay
@@ -59,14 +58,21 @@ fun RunnerScreen(
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showTransactionDialog by remember { mutableStateOf<Pair<TellerCashStatus, String>?>(null) }
     var amountText by remember { mutableStateOf("") }
-    
-    var showScanner by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        android.util.Log.d("RunnerScreen", "LaunchedEffect starting - loading initial data")
         viewModel.loadTellers(context)
         viewModel.loadHistory(context)
+        viewModel.loadSavedNotifications(context)
         viewModel.setupRealtimeListener(context)
         ReverbManager.connect()
+        
+        // Periodically refresh saved notifications every 2 seconds (reduced from 3)
+        while (true) {
+            delay(2000)
+            android.util.Log.d("RunnerScreen", "Polling notifications...")
+            viewModel.loadSavedNotifications(context)
+        }
     }
 
     // Auto-clear messages after 3 seconds
@@ -201,13 +207,21 @@ fun RunnerScreen(
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 val tellerName = incomingRequest!!.optString("teller_name", "A teller")
+                                val requestType = incomingRequest!!.optString("request_type", "assistance")
+                                val customMessage = incomingRequest!!.optString("custom_message", "")
+                                
+                                val displayMessage = when (requestType) {
+                                    "assistance" -> "Assistance needed at counter"
+                                    "need_cash" -> "Runner needed - Need cash"
+                                    "collect_cash" -> "Runner needed - Collect excess cash"
+                                    "other" -> "Custom request: $customMessage"
+                                    else -> "Assistance needed at counter"
+                                }
+                                
                                 Text(
-                                    text = "$tellerName needs assistance.",
+                                    text = "$tellerName - $displayMessage",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
-                            }
-                            IconButton(onClick = { viewModel.clearIncomingRequest() }) {
-                                Icon(Icons.Default.Close, null)
                             }
                         }
                         
@@ -218,9 +232,9 @@ fun RunnerScreen(
                         ) {
                             Button(
                                 onClick = { 
-                                    val requestId = incomingRequest!!.optInt("id", -1)
-                                    if (requestId > 0) {
-                                        viewModel.acceptRequest(context, requestId)
+                                    val tellerId = incomingRequest!!.optInt("teller_id", -1)
+                                    if (tellerId > 0) {
+                                        viewModel.acceptRequest(context, tellerId)
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
@@ -295,39 +309,6 @@ fun RunnerScreen(
 
                         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 
-                        if (showScanner) {
-                            Card(
-                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                                shape = RoundedCornerShape(16.dp)
-                            ) {
-                                QrScannerView(
-                                    onScanned = { scannedValue ->
-                                        val teller = tellers.find { it.name.contains(scannedValue, ignoreCase = true) || it.id.toString() == scannedValue }
-                                        if (teller != null) {
-                                            showTransactionDialog = teller to "collect"
-                                            showScanner = false
-                                        }
-                                    },
-                                    onDismiss = { showScanner = false }
-                                )
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                Button(
-                                    onClick = { showScanner = true },
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                                ) {
-                                    Icon(Icons.Default.QrCodeScanner, null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Scan Teller QR")
-                                }
-                            }
-                        }
-
                         TellerList(
                             tellers = tellers,
                             onCollect = { showTransactionDialog = it to "collect" },
@@ -347,7 +328,7 @@ fun RunnerScreen(
                         // ── History Summary Card ──
                         val totalCollected = history.filter { it.type == "cash_out" }.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
                         val totalProvided = history.filter { it.type == "cash_in" }.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
-                        
+
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(16.dp),
                             shape = RoundedCornerShape(12.dp)
@@ -379,7 +360,7 @@ fun RunnerScreen(
             val inputAmount = amountText.toDoubleOrNull() ?: 0.0
             val isCollect = type == "collect"
             val isAmountValid = inputAmount > 0 && (!isCollect || inputAmount <= tellerOnHandAmount)
-            
+
             AlertDialog(
                 onDismissRequest = { showTransactionDialog = null; amountText = "" },
                 title = { Text(if (isCollect) "Collect Cash" else "Provide Cash") },
@@ -446,6 +427,17 @@ fun NotificationHistoryList(
     onClear: () -> Unit,
     onMarkAsRead: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val viewModel = viewModel<RunnerViewModel>()
+    var acceptingId by remember { mutableStateOf<String?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    // Auto-stop refreshing after 2 seconds
+    LaunchedEffect(Unit) {
+        delay(2000)
+        isRefreshing = false
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -453,16 +445,35 @@ fun NotificationHistoryList(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Notification Alerts", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            if (notifications.isNotEmpty()) {
-                TextButton(onClick = onClear) {
-                    Text("Clear All")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(onClick = { 
+                    isRefreshing = true
+                    viewModel.loadSavedNotifications(context)
+
+                }) {
+                    if (isRefreshing) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+                if (notifications.isNotEmpty()) {
+                    TextButton(onClick = onClear) {
+                        Text("Clear All", fontSize = 12.sp)
+                    }
                 }
             }
         }
 
         if (notifications.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No recent notifications.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("No recent notifications.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.height(16.dp))
+                    Text("Waiting for runner requests...", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                }
             }
         } else {
             LazyColumn(
@@ -471,6 +482,11 @@ fun NotificationHistoryList(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(notifications) { notification ->
+                    val data = notification.data
+                    val requestType = data?.optString("request_type", "") ?: ""
+                    val tellerId = data?.optInt("teller_id", -1) ?: -1
+                    val isAssistanceRequest = notification.title.contains("Runner Requested", ignoreCase = true)
+                    
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
@@ -479,42 +495,86 @@ fun NotificationHistoryList(
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             else 
                                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        ),
-                        onClick = { onMarkAsRead(notification.id) }
+                        )
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Notifications, 
-                                contentDescription = null,
-                                tint = if (notification.isRead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    notification.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
+                        Column(modifier = Modifier.fillMaxWidth().padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Notifications, 
+                                    contentDescription = null,
+                                    tint = if (notification.isRead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
                                 )
-                                Text(
-                                    notification.message,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Text(
-                                    notification.timestamp,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                            if (!notification.isRead) {
-                                Box(
-                                    modifier = Modifier.size(8.dp).background(
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = CircleShape
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        notification.title,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
                                     )
-                                )
+                                    Text(
+                                        notification.message,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    
+                                    // Show request type badge if available
+                                    if (requestType.isNotEmpty()) {
+                                        Spacer(Modifier.height(4.dp))
+                                        Surface(
+                                            modifier = Modifier.wrapContentWidth(),
+                                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                requestType.uppercase().replace("_", " "),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(4.dp, 2.dp),
+                                                color = MaterialTheme.colorScheme.onSecondary
+                                            )
+                                        }
+                                    }
+                                    
+                                    Text(
+                                        notification.timestamp,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.outline,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                                if (!notification.isRead) {
+                                    Box(
+                                        modifier = Modifier.size(8.dp).background(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            shape = CircleShape
+                                        )
+                                    )
+                                }
+                            }
+                            
+                            // Accept button for assistance requests
+                            if (isAssistanceRequest && tellerId > 0) {
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        acceptingId = notification.id
+                                        viewModel.acceptRequest(context, tellerId)
+                                        onMarkAsRead(notification.id)
+                                    },
+                                    modifier = Modifier.align(Alignment.End),
+                                    enabled = acceptingId != notification.id
+                                ) {
+                                    if (acceptingId == notification.id) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Text("ACCEPT", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                }
                             }
                         }
                     }

@@ -8,7 +8,7 @@ import com.yego.sabongbettingsystem.data.model.BetResponse
 import com.yego.sabongbettingsystem.data.model.Fight
 import com.yego.sabongbettingsystem.data.model.PlaceBetRequest
 import com.yego.sabongbettingsystem.data.store.UserStore
-import com.yego.sabongbettingsystem.data.model.CashRequestRequest
+import com.yego.sabongbettingsystem.data.model.AssistanceRequest
 import com.yego.sabongbettingsystem.data.model.RunnerTransactionResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -65,7 +65,7 @@ class CashInViewModel : ViewModel() {
     fun clearError()  { _error.value = null }
     fun clearRequestSuccess() { _requestSuccess.value = false }
 
-    fun addNotification(title: String, message: String, data: JSONObject? = null) {
+    fun addNotification(title: String, message: String, data: JSONObject? = null, context: android.content.Context? = null) {
         val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
         val timestamp = sdf.format(Date())
         val newNotification = TellerNotification(
@@ -75,6 +75,23 @@ class CashInViewModel : ViewModel() {
             data = data
         )
         _notifications.value = listOf(newNotification) + _notifications.value
+        
+        // Save to database
+        if (context != null) {
+            viewModelScope.launch {
+                try {
+                    val notificationRequest = com.yego.sabongbettingsystem.data.model.NotificationRequest(
+                        title = title,
+                        message = message,
+                        data = data?.toString()
+                    )
+                    val token = bearerToken(context)
+                    RetrofitClient.api.saveNotification(token, notificationRequest)
+                } catch (e: Exception) {
+                    android.util.Log.e("CashInVM", "Failed to save notification to database", e)
+                }
+            }
+        }
     }
 
     fun markNotificationAsRead(id: String) {
@@ -85,6 +102,30 @@ class CashInViewModel : ViewModel() {
 
     fun clearNotifications() {
         _notifications.value = emptyList()
+    }
+
+    fun loadSavedNotifications(context: Context) {
+        viewModelScope.launch {
+            try {
+                val token = bearerToken(context)
+                val response = RetrofitClient.api.getNotifications(token)
+                if (response.isSuccessful) {
+                    val savedNotifications = response.body()?.map { notif ->
+                        TellerNotification(
+                            id = notif.id.toString(),
+                            title = notif.title,
+                            message = notif.message,
+                            timestamp = notif.timestamp,
+                            data = try { org.json.JSONObject(notif.data ?: "{}") } catch (e: Exception) { null },
+                            isRead = notif.is_read
+                        )
+                    } ?: emptyList()
+                    _notifications.value = savedNotifications
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CashInVM", "Failed to load saved notifications", e)
+            }
+        }
     }
 
     fun loadCurrentFight(context: Context) {
@@ -247,17 +288,17 @@ class CashInViewModel : ViewModel() {
         }
     }
 
-    fun requestRunner(context: Context) {
+    fun requestRunner(context: Context, requestType: String? = null, customMessage: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                val request = CashRequestRequest(
-                    type = "cash_in",
-                    amount = 1.0, // Satisfy server validation: amount must be >= 1
-                    reason = "Runner requested for assistance/remittance"
+                val token = bearerToken(context)
+                val request = AssistanceRequest(
+                    request_type = requestType ?: "assistance",
+                    custom_message = customMessage
                 )
-                val response = RetrofitClient.api.requestRunner(bearerToken(context), request)
+                val response = RetrofitClient.api.sendAssistanceRequest(token, request)
                 if (response.isSuccessful) {
                     _requestSuccess.value = true
                 } else {

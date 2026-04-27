@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.yego.sabongbettingsystem.data.api.RetrofitClient
 import com.yego.sabongbettingsystem.data.model.BetResponse
 import com.yego.sabongbettingsystem.data.model.PayoutResponse
+import com.yego.sabongbettingsystem.data.model.RunnerTransactionResponse
+import com.yego.sabongbettingsystem.data.model.TellerCashStatusResponse
 import com.yego.sabongbettingsystem.data.store.UserStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +32,12 @@ class CashOutViewModel : ViewModel() {
 
     private val _betHistory = MutableStateFlow<List<BetResponse>>(emptyList())
     val betHistory: StateFlow<List<BetResponse>> = _betHistory
+
+    private val _runnerHistory = MutableStateFlow<List<RunnerTransactionResponse>>(emptyList())
+    val runnerHistory: StateFlow<List<RunnerTransactionResponse>> = _runnerHistory
+
+    private val _tellerCashStatus = MutableStateFlow<TellerCashStatusResponse?>(null)
+    val tellerCashStatus: StateFlow<TellerCashStatusResponse?> = _tellerCashStatus
 
     private suspend fun bearerToken(context: Context): String {
         val token = UserStore(context).token.first() ?: ""
@@ -70,6 +78,32 @@ class CashOutViewModel : ViewModel() {
                 // Silently ignore or handle
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadRunnerHistory(context: Context) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.api.getTellerRunnerTransactions(bearerToken(context))
+                if (response.isSuccessful) {
+                    _runnerHistory.value = response.body() ?: emptyList()
+                }
+            } catch (e: Exception) {
+                // Silently ignore or handle
+            }
+        }
+    }
+
+    fun loadTellerCashStatus(context: Context) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.api.getTellerCashStatus(bearerToken(context))
+                if (response.isSuccessful) {
+                    _tellerCashStatus.value = response.body()
+                }
+            } catch (e: Exception) {
+                // Silently ignore or handle
             }
         }
     }
@@ -131,6 +165,7 @@ class CashOutViewModel : ViewModel() {
                     _confirmed.value = true
                     _payout.value    = null
                     loadBetHistory(context) // refresh history after payout
+                    loadTellerCashStatus(context) // refresh cash status
                 } else {
                     val errorMessage = try {
                         val errorBody = response.errorBody()?.string() ?: ""

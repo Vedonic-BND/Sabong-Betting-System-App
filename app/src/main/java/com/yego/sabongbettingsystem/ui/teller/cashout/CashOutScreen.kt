@@ -31,6 +31,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import com.yego.sabongbettingsystem.data.model.BetResponse
 import com.yego.sabongbettingsystem.ui.components.QrScannerView
 import com.yego.sabongbettingsystem.ui.components.WsStatusBadge
+import com.yego.sabongbettingsystem.ui.utils.parseCurrency
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +52,8 @@ fun CashOutScreen(
     val error     by viewModel.error.collectAsState()
     val confirmed by viewModel.confirmed.collectAsState()
     val betHistory by viewModel.betHistory.collectAsState()
+    val tellerCashStatus by viewModel.tellerCashStatus.collectAsState()
+    val runnerHistory by viewModel.runnerHistory.collectAsState()
 
     var reference by rememberSaveable { mutableStateOf("") }
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -78,6 +82,8 @@ fun CashOutScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadBetHistory(context)
+        viewModel.loadTellerCashStatus(context)
+        viewModel.loadRunnerHistory(context)
         reverbViewModel.connect()
     }
 
@@ -143,6 +149,7 @@ fun CashOutScreen(
     LaunchedEffect(confirmed) {
         if (confirmed) {
             viewModel.loadBetHistory(context)
+            viewModel.loadTellerCashStatus(context)
         }
     }
 
@@ -150,6 +157,8 @@ fun CashOutScreen(
     LaunchedEffect(cashUpdated) {
         if (cashUpdated != null) {
             viewModel.loadBetHistory(context)
+            viewModel.loadTellerCashStatus(context)
+            viewModel.loadRunnerHistory(context)
         }
     }
 
@@ -157,6 +166,7 @@ fun CashOutScreen(
     LaunchedEffect(fightState) {
         if (fightState?.winner != null) {
             viewModel.loadBetHistory(context)
+            viewModel.loadTellerCashStatus(context)
         }
     }
 
@@ -176,13 +186,13 @@ fun CashOutScreen(
                 actions = {
                     WsStatusBadge(connected = true)
                     Spacer(Modifier.width(8.dp))
+                    IconButton(onClick = { navController.navigate("printer_settings") }) {
+                        Icon(Icons.Default.AdfScanner, contentDescription = "Printer Settings")
+                    }
                     IconButton(onClick = {
                         viewModel.logout(context, onLogout)
                     }) {
                         Icon(Icons.Default.Logout, contentDescription = "Logout")
-                    }
-                    IconButton(onClick = { navController.navigate("printer_settings") }) {
-                        Icon(Icons.Default.AdfScanner, contentDescription = "Printer Settings")
                     }
                 }
             )
@@ -231,61 +241,6 @@ fun CashOutScreen(
                 )
             }
 
-            // ── Payout Summary Card (Always at the top) ──
-            val unpaidCount = betHistory.count { 
-                val isRefundable = it.winner?.lowercase() == "draw" || it.winner?.lowercase() == "cancelled"
-                (it.won == true || isRefundable) && it.status?.lowercase() != "paid"
-            }
-            val paidCount = betHistory.count { it.status?.lowercase() == "paid" }
-
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "UNPAID",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = unpaidCount.toString(),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-
-                    VerticalDivider(modifier = Modifier.height(40.dp))
-
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "PAID",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = paidCount.toString(),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-
-            HorizontalDivider()
-
             when (selectedTabIndex) {
                 0 -> {
                     Column(
@@ -295,7 +250,150 @@ fun CashOutScreen(
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Spacer(Modifier.height(8.dp))
+                        // ── On-Hand Cash Card ────────────────────────
+                        val onHandCash = tellerCashStatus?.on_hand_cash?.toDoubleOrNull() ?: 0.0
+                        
+                        val betInAmount = betHistory.sumOf { it.receipt.amount.parseCurrency() }
+                        val payoutAmount = betHistory
+                            .filter { it.status?.lowercase() == "paid" }
+                            .sumOf { it.net_payout.parseCurrency() }
+                        val providedAmount = runnerHistory
+                            .filter { it.type == "cash_in" }
+                            .sumOf { it.amount.parseCurrency() }
+                        val collectedAmount = runnerHistory
+                            .filter { it.type == "cash_out" }
+                            .sumOf { it.amount.parseCurrency() }
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier.size(48.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.onPrimary)
+                                        }
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "TOTAL ON-HAND CASH",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                        Text(
+                                            text = "₱${String.format(Locale.US, "%,.2f", onHandCash)}",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Bet in: ₱${String.format(Locale.US, "%,.0f", betInAmount)}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "Payout: ₱${String.format(Locale.US, "%,.0f", payoutAmount)}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Provided: ₱${String.format(Locale.US, "%,.0f", providedAmount)}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        )
+                                        Text(
+                                            text = "Collected: ₱${String.format(Locale.US, "%,.0f", collectedAmount)}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // ── Payout Summary Card (Below On-Hand Cash) ──
+                        val unpaidCount = betHistory.count { 
+                            val isRefundable = it.winner?.lowercase() == "draw" || it.winner?.lowercase() == "cancelled"
+                            (it.won == true || isRefundable) && it.status?.lowercase() != "paid"
+                        }
+                        val paidCount = betHistory.count { it.status?.lowercase() == "paid" }
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "UNPAID",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = unpaidCount.toString(),
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+
+                                VerticalDivider(modifier = Modifier.height(40.dp))
+
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "PAID",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = paidCount.toString(),
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider()
 
                         if (confirmed) {
                             Card(

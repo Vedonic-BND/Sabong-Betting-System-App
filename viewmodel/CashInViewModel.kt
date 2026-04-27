@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yego.sabongbettingsystem.data.api.RetrofitClient
+import com.yego.sabongbettingsystem.data.model.AssistanceRequest
 import com.yego.sabongbettingsystem.data.model.BetResponse
 import com.yego.sabongbettingsystem.data.model.Fight
 import com.yego.sabongbettingsystem.data.model.PlaceBetRequest
@@ -30,6 +31,9 @@ class CashInViewModel : ViewModel() {
     private val _betHistory = MutableStateFlow<List<BetResponse>>(emptyList())
     val betHistory: StateFlow<List<BetResponse>> = _betHistory
 
+    private val _requestSuccess = MutableStateFlow(false)
+    val requestSuccess: StateFlow<Boolean> = _requestSuccess
+
     private suspend fun bearerToken(context: Context): String {
         val token = UserStore(context).token.first() ?: ""
         return "Bearer $token"
@@ -37,6 +41,7 @@ class CashInViewModel : ViewModel() {
 
     fun clearResult() { _betResult.value = null }
     fun clearError()  { _error.value = null }
+    fun clearRequestSuccess() { _requestSuccess.value = false }
 
     fun loadCurrentFight(context: Context) {
         viewModelScope.launch {
@@ -164,5 +169,32 @@ class CashInViewModel : ViewModel() {
 
     fun stopAutoRefresh() {
         refreshJob?.cancel()
+    }
+
+    fun requestRunner(context: Context, requestType: String, customMessage: String = "") {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val token = bearerToken(context)
+                val request = AssistanceRequest(
+                    request_type = requestType,
+                    custom_message = if (customMessage.isBlank()) null else customMessage
+                )
+                
+                val response = RetrofitClient.api.sendAssistanceRequest(token, request)
+                
+                if (response.isSuccessful) {
+                    _requestSuccess.value = true
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _error.value = "Error ${response.code()}: $errorBody"
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 }

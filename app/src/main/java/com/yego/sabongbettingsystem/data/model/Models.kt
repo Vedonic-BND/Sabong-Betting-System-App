@@ -159,16 +159,40 @@ data class TellerCashStatusListResponse(
     val data: List<TellerCashStatus>
 )
 
+data class NotificationRequest(
+    val title: String,
+    val message: String,
+    val data: String? = null
+)
+
+data class NotificationResponse(
+    val id: Int,
+    val title: String,
+    val message: String,
+    val data: String?,
+    val is_read: Boolean,
+    val created_at: String,
+    val timestamp: String
+)
+
 data class RunnerHistoryResponse(
     val data: List<RunnerTransactionResponse>
 )
 
+data class AssistanceRequest(
+    val request_type: String,  // "assistance", "need_cash", "collect_cash", "other"
+    val custom_message: String? = null
+)
+
 data class CashRequestRequest(
     val type: String,  // "cash_in" or "cash_out"
-    val amount: Double,
-    val reason: String? = null
+    val amount: Double = 0.0,
+    val reason: String? = null,
+    val request_type: String? = null,  // "assistance", "need_cash", "collect_cash", "other"
+    val custom_message: String? = null
 )
 
 data class SystemSettings(
     val display_title: String
 )
+

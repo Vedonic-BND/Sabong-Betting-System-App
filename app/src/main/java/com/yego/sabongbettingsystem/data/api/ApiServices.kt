@@ -112,6 +112,28 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Response<List<RunnerTransactionResponse>>
 
+    @POST("notifications")
+    suspend fun saveNotification(
+        @Header("Authorization") token: String,
+        @Body request: NotificationRequest
+    ): Response<MessageResponse>
+
+    @GET("notifications")
+    suspend fun getNotifications(
+        @Header("Authorization") token: String
+    ): Response<List<NotificationResponse>>
+
+    @PATCH("notifications/{id}/read")
+    suspend fun markNotificationAsRead(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<MessageResponse>
+
+    @DELETE("notifications")
+    suspend fun clearNotifications(
+        @Header("Authorization") token: String
+    ): Response<MessageResponse>
+
     // ── Runner ───────────────────────────────────────────
     @GET("runner/tellers")
     suspend fun getTellersCashStatus(
@@ -129,22 +151,17 @@ interface ApiService {
         @Header("Authorization") token: String
     ): Response<List<RunnerTransactionResponse>>
 
-    @POST("cash-request")
-    suspend fun requestRunner(
+    // ── Assistance (Simplified Runner Notification) ──
+    @POST("assistance/request")
+    suspend fun sendAssistanceRequest(
         @Header("Authorization") token: String,
-        @Body request: CashRequestRequest
+        @Body request: AssistanceRequest
     ): Response<MessageResponse>
 
-    @PATCH("cash-request/{id}/approve")
-    suspend fun acceptCashRequest(
+    @POST("assistance/accept/{teller_id}")
+    suspend fun acceptAssistance(
         @Header("Authorization") token: String,
-        @Path("id") id: Int
-    ): Response<MessageResponse>
-
-    @PATCH("cash-request/{id}/decline")
-    suspend fun declineCashRequest(
-        @Header("Authorization") token: String,
-        @Path("id") id: Int
+        @Path("teller_id") tellerId: Int
     ): Response<MessageResponse>
 
     // ── Settings (public) ────────────────────────────────

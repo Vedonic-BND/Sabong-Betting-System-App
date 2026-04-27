@@ -79,6 +79,7 @@ fun CashInScreen(
         cashInViewModel.loadBetHistory(context)
         cashInViewModel.loadRunnerHistory(context)
         cashInViewModel.loadTellerCashStatus(context)
+        cashInViewModel.loadSavedNotifications(context)
         cashOutViewModel.loadBetHistory(context)
         reverbViewModel.connect()
     }
@@ -118,7 +119,8 @@ fun CashInScreen(
             cashInViewModel.addNotification(
                 title = "Runner Accepted",
                 message = "$runnerName is on the way to assist you.",
-                data = runnerAccepted
+                data = runnerAccepted,
+                context = context
             )
             
             // Clear the state in ReverbViewModel so it doesn't re-trigger on recomposition
@@ -471,6 +473,8 @@ fun CashInScreen(
                     }
                 }
             }
+
+            HorizontalDivider()
 
             // ── Place Bet ─────────────────────────────────
             if (statusDisplay == "open" && (fight != null || reverbFight != null)) {
