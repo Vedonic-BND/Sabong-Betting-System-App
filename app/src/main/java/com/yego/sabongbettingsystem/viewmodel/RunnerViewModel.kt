@@ -48,6 +48,7 @@ class RunnerViewModel : ViewModel() {
 
     private val _incomingRequest = MutableStateFlow<JSONObject?>(null)
     val incomingRequest: StateFlow<JSONObject?> = _incomingRequest
+    val activeRequest: StateFlow<JSONObject?> = _incomingRequest
 
     private val _notifications = MutableStateFlow<List<RunnerNotification>>(emptyList())
     val notifications: StateFlow<List<RunnerNotification>> = _notifications
@@ -167,6 +168,9 @@ class RunnerViewModel : ViewModel() {
                     data = data,
                     context = context
                 )
+                
+                // Trigger sound and vibration immediately on real-time notification
+                triggerSoundAndVibration(context)
             }
         }
 
@@ -318,6 +322,37 @@ class RunnerViewModel : ViewModel() {
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    fun triggerSoundAndVibration(context: Context) {
+        try {
+            // Play notification sound
+            val notification = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+            val ringtone = android.media.RingtoneManager.getRingtone(context, notification)
+            ringtone.play()
+        } catch (e: Exception) {
+            android.util.Log.e("RunnerVM", "Failed to play sound: ${e.message}")
+        }
+
+        try {
+            // Vibrate device
+            val vibrator = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as android.os.VibratorManager
+                vibratorManager.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as android.os.Vibrator
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                vibrator.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 300, 100, 300), -1))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(500)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("RunnerVM", "Failed to vibrate: ${e.message}")
         }
     }
 
