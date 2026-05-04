@@ -158,10 +158,10 @@ interface ApiService {
         @Body request: AssistanceRequest
     ): Response<MessageResponse>
 
-    @POST("assistance/accept/{teller_id}")
+    @POST("assistance/accept/{tellerId}")
     suspend fun acceptAssistance(
         @Header("Authorization") token: String,
-        @Path("teller_id") tellerId: Int
+        @Path("tellerId") tellerId: Int
     ): Response<MessageResponse>
 
     // ── Settings (public) ────────────────────────────────

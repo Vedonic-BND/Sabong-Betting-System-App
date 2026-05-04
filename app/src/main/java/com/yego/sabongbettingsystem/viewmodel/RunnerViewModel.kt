@@ -126,7 +126,22 @@ class RunnerViewModel : ViewModel() {
                         )
                     } ?: emptyList()
                     android.util.Log.d("RunnerVM", "Total notifications loaded: ${savedNotifications.size}")
-                    _notifications.value = savedNotifications
+                    
+                    // Merge with existing notifications to avoid duplicates
+                    // Keep existing notifications (they may have been processed locally)
+                    // but update their read status and add new ones from the database
+                    val existingIds = _notifications.value.map { it.id }.toSet()
+                    val newNotifications = savedNotifications.filter { notif ->
+                        notif.id !in existingIds
+                    }
+                    
+                    // Update read status for existing notifications
+                    _notifications.value = _notifications.value.map { existing ->
+                        val dbNotif = savedNotifications.find { it.id == existing.id }
+                        if (dbNotif != null) existing.copy(isRead = dbNotif.isRead) else existing
+                    } + newNotifications
+                    
+                    android.util.Log.d("RunnerVM", "Total after merge: ${_notifications.value.size}")
                 } else {
                     val errorBody = response.errorBody()?.string()
                     android.util.Log.e("RunnerVM", "Failed to load notifications: ${response.code()} - $errorBody")
@@ -305,20 +320,60 @@ class RunnerViewModel : ViewModel() {
             _isLoading.value = true
             _error.value = null
             try {
-                val response = RetrofitClient.api.acceptAssistance(bearerToken(context), tellerId)
+                val token = bearerToken(context)
+                android.util.Log.d("RunnerVM", "Accept request - tellerId: $tellerId, token: ${token.take(20)}...")
+                val response = RetrofitClient.api.acceptAssistance(token, tellerId)
+                android.util.Log.d("RunnerVM", "Accept response code: ${response.code()}")
                 if (response.isSuccessful) {
                     _successMessage.value = "Request accepted! You have 15 seconds."
                     _incomingRequest.value = null
+                    
+                    // Immediately remove the accepted notification from the local list
+                    // to prevent showing the accept button again
+                    _notifications.value = _notifications.value.filter { notification ->
+                        val data = notification.data
+                        val notifTellerId = data?.optInt("teller_id", -1) ?: -1
+                        // Remove only the "Runner Requested" notification for this teller
+                        !(notification.title.contains("Runner Requested", ignoreCase = true) && notifTellerId == tellerId)
+                    }
+                    
                     // Refresh tellers and history
                     loadTellers(context)
                     loadHistory(context)
                     loadSavedNotifications(context)
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    _error.value = "Failed to accept: $errorBody"
+                    android.util.Log.e("RunnerVM", "Accept error: ${response.code()} - $errorBody")
+                    _error.value = "Failed to accept (${response.code()}): $errorBody"
                 }
             } catch (e: Exception) {
+                android.util.Log.e("RunnerVM", "Accept exception", e)
                 _error.value = "Connection error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun declineRequest(context: Context, tellerId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                _incomingRequest.value = null
+                _successMessage.value = "Request declined."
+                
+                // Immediately remove the declined notification from the local list
+                _notifications.value = _notifications.value.filter { notification ->
+                    val data = notification.data
+                    val notifTellerId = data?.optInt("teller_id", -1) ?: -1
+                    // Remove only the "Runner Requested" notification for this teller
+                    !(notification.title.contains("Runner Requested", ignoreCase = true) && notifTellerId == tellerId)
+                }
+                
+                loadTellers(context)
+            } catch (e: Exception) {
+                _error.value = "Error: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

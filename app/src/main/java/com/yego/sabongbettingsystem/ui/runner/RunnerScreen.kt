@@ -251,7 +251,7 @@ fun RunnerScreen(
                                 }
                             }
                             OutlinedButton(
-                                onClick = { 
+                                onClick = {
                                     // Just clear locally as requested
                                     viewModel.clearIncomingRequest()
                                 },
@@ -491,9 +491,9 @@ fun NotificationHistoryList(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (notification.isRead) 
+                            containerColor = if (notification.isRead)
                                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            else 
+                            else
                                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                         )
                     ) {
@@ -504,7 +504,7 @@ fun NotificationHistoryList(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.Notifications, 
+                                    Icons.Default.Notifications,
                                     contentDescription = null,
                                     tint = if (notification.isRead) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
                                 )
@@ -518,7 +518,7 @@ fun NotificationHistoryList(
                                         notification.message,
                                         style = MaterialTheme.typography.bodySmall
                                     )
-                                    
+
                                     // Show request type badge if available
                                     if (requestType.isNotEmpty()) {
                                         Spacer(Modifier.height(4.dp))
@@ -535,7 +535,7 @@ fun NotificationHistoryList(
                                             )
                                         }
                                     }
-                                    
+
                                     Text(
                                         notification.timestamp,
                                         style = MaterialTheme.typography.labelSmall,
@@ -617,7 +617,7 @@ fun TellerList(
                             }
                             Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
                         }
-                        
+
                         if (teller.last_transaction != null) {
                             Text(
                                 "Last: ${teller.last_transaction}",
