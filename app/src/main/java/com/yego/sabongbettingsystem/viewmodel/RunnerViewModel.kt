@@ -325,7 +325,7 @@ class RunnerViewModel : ViewModel() {
                 val response = RetrofitClient.api.acceptAssistance(token, tellerId)
                 android.util.Log.d("RunnerVM", "Accept response code: ${response.code()}")
                 if (response.isSuccessful) {
-                    _successMessage.value = "Request accepted! You have 15 seconds."
+                    _successMessage.value = "Request accepted! You are assigned for 30 seconds."
                     _incomingRequest.value = null
                     
                     // Immediately remove the accepted notification from the local list
@@ -341,6 +341,16 @@ class RunnerViewModel : ViewModel() {
                     loadTellers(context)
                     loadHistory(context)
                     loadSavedNotifications(context)
+                } else if (response.code() == 409) {
+                    // Request already accepted by another runner
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        val errorJson = org.json.JSONObject(errorBody ?: "{}")
+                        val assignedTo = errorJson.optString("assigned_to", "another runner")
+                        _error.value = "Already accepted by $assignedTo"
+                    } catch (e: Exception) {
+                        _error.value = "Request already accepted by another runner"
+                    }
                 } else {
                     val errorBody = response.errorBody()?.string()
                     android.util.Log.e("RunnerVM", "Accept error: ${response.code()} - $errorBody")

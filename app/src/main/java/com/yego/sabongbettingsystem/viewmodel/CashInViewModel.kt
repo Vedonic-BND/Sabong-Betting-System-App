@@ -301,6 +301,16 @@ class CashInViewModel : ViewModel() {
                 val response = RetrofitClient.api.sendAssistanceRequest(token, request)
                 if (response.isSuccessful) {
                     _requestSuccess.value = true
+                } else if (response.code() == 429) {
+                    // Too many requests - teller is in cooldown
+                    try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        val errorJson = org.json.JSONObject(errorBody)
+                        val retryAfter = errorJson.optInt("retry_after_seconds", 30)
+                        _error.value = "Please wait ${retryAfter}s before requesting again."
+                    } catch (e: Exception) {
+                        _error.value = "Please wait before requesting again. (30s cooldown)"
+                    }
                 } else {
                     val errorMessage = try {
                         val errorBody = response.errorBody()?.string() ?: ""
