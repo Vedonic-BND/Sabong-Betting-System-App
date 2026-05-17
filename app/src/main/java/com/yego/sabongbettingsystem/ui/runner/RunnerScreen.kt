@@ -64,6 +64,7 @@ fun RunnerScreen(
     var showTransactionDialog by remember { mutableStateOf<Pair<TellerCashStatus, String>?>(null) }
     var amountText by remember { mutableStateOf("") }
     var runnerAssignment by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair(message, tellerName)
+    var lastShownAssignmentId by remember { mutableStateOf<String?>(null) } // Track which assignment was already shown
 
     LaunchedEffect(Unit) {
         android.util.Log.d("RunnerScreen", "🚀 LaunchedEffect starting - loading initial data")
@@ -107,12 +108,14 @@ fun RunnerScreen(
             android.util.Log.d("RunnerScreen", "   - Title: '${notif.title}', isRead: ${notif.isRead}, message: ${notif.message}")
         }
         
+        // Only show assignment if it's unread AND we haven't shown this specific notification yet
         val assignmentNotif = notifications.firstOrNull { 
-            it.title == "Assignment"
+            it.title == "Assignment" && !it.isRead && it.id != lastShownAssignmentId
         }
         
         if (assignmentNotif != null) {
-            android.util.Log.d("RunnerScreen", "✅ Found unread Assignment notification: ${assignmentNotif.message}")
+            android.util.Log.d("RunnerScreen", "✅ Found new unread Assignment notification: ${assignmentNotif.message}")
+            lastShownAssignmentId = assignmentNotif.id
             runnerAssignment = Pair(assignmentNotif.message, "")
             android.util.Log.d("RunnerScreen", "🎯 Assignment notification triggered: ${assignmentNotif.message}")
             
@@ -145,7 +148,7 @@ fun RunnerScreen(
                 e.printStackTrace()
             }
         } else {
-            android.util.Log.d("RunnerScreen", "❌ No unread Assignment notification found")
+            android.util.Log.d("RunnerScreen", "❌ No new unread Assignment notification found")
         }
     }
     
@@ -565,6 +568,13 @@ fun RunnerScreen(
                         ) {
                             OutlinedButton(
                                 onClick = {
+                                    // Mark assignment as read before dismissing
+                                    val assignmentNotif = notifications.firstOrNull { 
+                                        it.title == "Assignment" && it.id == lastShownAssignmentId
+                                    }
+                                    if (assignmentNotif != null) {
+                                        viewModel.markNotificationAsRead(assignmentNotif.id, context)
+                                    }
                                     runnerAssignment = null
                                 },
                                 modifier = Modifier.weight(0.5f)
