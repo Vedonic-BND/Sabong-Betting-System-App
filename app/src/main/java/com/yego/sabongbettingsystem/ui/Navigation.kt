@@ -20,6 +20,7 @@ import com.yego.sabongbettingsystem.ui.teller.cashin.RequestRunnerScreen
 import com.yego.sabongbettingsystem.ui.teller.cashout.CashOutScreen
 import com.yego.sabongbettingsystem.viewmodel.CashInViewModel
 import com.yego.sabongbettingsystem.viewmodel.ReverbViewModel
+import com.yego.sabongbettingsystem.viewmodel.RunnerViewModel
 import com.yego.sabongbettingsystem.ui.admin.AdminMainScreen
 import com.yego.sabongbettingsystem.ui.admin.AdminReceiptScreen
 
@@ -31,8 +32,15 @@ fun AppNavigation() {
     val token by userStore.token.collectAsState(initial = null)
     val role  by userStore.role.collectAsState(initial = null)
     val app   by userStore.app.collectAsState(initial = null)
+    val userId by userStore.userId.collectAsState(initial = "")
 
     val navController = rememberNavController()
+    
+    // Connect ReverbManager immediately at app startup
+    LaunchedEffect(Unit) {
+        android.util.Log.d("AppNav", "🔌 Connecting ReverbManager at app startup")
+        com.yego.sabongbettingsystem.data.realtime.ReverbManager.connect()
+    }
 
     // determine start destination
     val startDestination = when {

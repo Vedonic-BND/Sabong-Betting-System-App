@@ -1,0 +1,159 @@
+═══════════════════════════════════════════════════════════════════════════════
+VISUAL COMPARISON: BEFORE vs AFTER
+═══════════════════════════════════════════════════════════════════════════════
+
+BEFORE (BROKEN) - Multiple ViewModels Fighting Over Callbacks
+────────────────────────────────────────────────────────────
+
+    AppNavigation
+         ↓
+    ReverbManager.connect()
+         ↓ (creates WebSocket)
+         
+    RunnerScreen loaded
+         ↓
+    RunnerViewModel.setupRealtimeListener()
+         ├─ Set onConnected = { RunnerVM logic }
+         ├─ Set onDisconnected = { RunnerVM logic }
+         ├─ Set onTellerCashUpdated = { RunnerVM logic }
+         ├─ Set onCashRequested = { RunnerVM logic }
+         ├─ Set onRunnerAccepted = { RunnerVM logic }
+         └─ Set onRunnerAssignedByOwner = { RunnerVM logic } ✓
+         
+    User navigates to CashInScreen
+         ↓
+    ReverbViewModel (NEW INSTANCE) created
+         ↓
+    ReverbViewModel.connect()
+         ├─ OVERWRITES onConnected = { ReverbVM logic } ✗ CONFLICT!
+         ├─ OVERWRITES onDisconnected = { ReverbVM logic } ✗ CONFLICT!
+         ├─ Set onFightUpdated = { ReverbVM logic }
+         ├─ Set onBetPlaced = { ReverbVM logic }
+         ├─ Set onWinnerDeclared = { ReverbVM logic }
+         ├─ Set onTellerCashUpdated = { ReverbVM logic }
+         ├─ Set onRunnerAccepted = { ReverbVM logic }
+         └─ Set onRunnerDeclined = { ReverbVM logic }
+         
+    CashInScreen closes
+         ↓
+    ReverbViewModel.onCleared()
+         ↓
+    ReverbViewModel.disconnect()
+         ↓
+    ReverbManager.disconnect()  ✗ DESTROYS WebSocket!
+         ├─ pusher?.disconnect()
+         ├─ pusher = null
+         └─ channel = null
+         
+    Event arrives: runner.assigned-by-owner
+         ↓
+    WebSocket DEAD - Event never received ❌
+         ↓
+    Popup never appears ❌
+
+
+AFTER (FIXED) - Clean Separation of Concerns
+──────────────────────────────────────────────
+
+    AppNavigation
+         ↓
+    ReverbManager.connect()
+         ↓ (creates WebSocket)
+         
+    RunnerScreen loaded
+         ↓
+    RunnerViewModel.setupRealtimeListener()
+         ├─ Set onConnected = { RunnerVM logic } ✓
+         ├─ Set onDisconnected = { RunnerVM logic } ✓
+         ├─ Set onTellerCashUpdated = { RunnerVM logic } ✓
+         ├─ Set onCashRequested = { RunnerVM logic } ✓
+         ├─ Set onRunnerAccepted = { RunnerVM logic } ✓
+         └─ Set onRunnerAssignedByOwner = { RunnerVM logic } ✓ OWNER!
+         
+    User navigates to CashInScreen
+         ↓
+    ReverbViewModel (NEW INSTANCE) created
+         ↓
+    ReverbViewModel.connect()
+         ├─ Skip onConnected (let RunnerVM manage) ✓
+         ├─ Skip onDisconnected (let RunnerVM manage) ✓
+         ├─ Set onFightUpdated = { ReverbVM logic }
+         ├─ Set onBetPlaced = { ReverbVM logic }
+         ├─ Set onWinnerDeclared = { ReverbVM logic }
+         ├─ Set onTellerCashUpdated = { ReverbVM logic }
+         ├─ Set onRunnerAccepted = { ReverbVM logic }
+         └─ Set onRunnerDeclined = { ReverbVM logic }
+         ↓
+    ReverbManager.connect() is called
+         ↓
+    Checks: if (isConnected()) → YES, already connected
+         ↓
+    Returns early WITHOUT recreating WebSocket ✓
+         
+    CashInScreen closes
+         ↓
+    ReverbViewModel.onCleared()
+         ↓
+    ReverbViewModel.disconnect()
+         ↓
+    ⚠️ SKIPS ReverbManager.disconnect() ✓
+         ↓
+    WebSocket stays ALIVE ✓
+         
+    Event arrives: runner.assigned-by-owner
+         ↓
+    WebSocket receives event ✓
+         ↓
+    cashRequestChannel.bind("runner.assigned-by-owner") handler
+         ↓
+    Invokes: onRunnerAssignedByOwner?.invoke(payload) ✓
+         ↓
+    RunnerViewModel callback executes:
+         ├─ Filter: runner_id matches
+         ├─ Create: Notification with title="Assignment"
+         ├─ Add: to _notifications StateFlow
+         └─ Update: database
+         
+    RunnerScreen's LaunchedEffect(notifications) fires
+         ↓
+    Find: Assignment notification (ignore read status)
+         ↓
+    Set: runnerAssignment state
+         ↓
+    Trigger: Popup display ✓
+         ├─ UI: Modal overlay appears
+         ├─ Sound: RingtoneManager plays notification sound
+         ├─ Vibration: Device vibrates 500ms
+         └─ Timer: Auto-dismiss after 5 seconds
+         
+    SUCCESS ✓✓✓
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+CALLBACK OWNERSHIP MODEL
+────────────────────────
+
+RunnerViewModel (Owns Runner-Specific Callbacks)
+    ├─ onConnected
+    ├─ onDisconnected
+    ├─ onTellerCashUpdated (from cash-status channel)
+    ├─ onCashRequested
+    ├─ onRunnerAccepted
+    └─ onRunnerAssignedByOwner ← THIS IS THE TARGET ✓
+
+ReverbViewModel (Owns Fight/Betting Callbacks)
+    ├─ onFightUpdated
+    ├─ onBetPlaced
+    ├─ onWinnerDeclared
+    ├─ onTellerCashUpdated (from fights channel - separate)
+    ├─ onRunnerAccepted (for teller filtering)
+    └─ onRunnerDeclined
+
+Global Singleton (ReverbManager)
+    ├─ Lifetime: App startup to app close
+    ├─ Multiple ViewModels can read from it
+    ├─ Each ViewModel manages only its callbacks
+    └─ No ViewModel should call disconnect() ✓
+
+═══════════════════════════════════════════════════════════════════════════════

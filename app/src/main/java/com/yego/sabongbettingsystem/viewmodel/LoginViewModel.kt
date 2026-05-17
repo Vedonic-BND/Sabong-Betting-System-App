@@ -45,7 +45,8 @@ class LoginViewModel : ViewModel() {
                         "admin" -> {
                             store.saveAdmin(
                                 token = body.token!!,
-                                name  = body.user.name
+                                name  = body.user.name,
+                                userId = body.user.id
                             )
                             _state.value = LoginState.SuccessAdmin(body.user.name)
                         }
@@ -55,7 +56,8 @@ class LoginViewModel : ViewModel() {
                                 store.saveTeller(
                                     cashInToken  = token,
                                     cashOutToken = token,
-                                    name         = body.user.name
+                                    name         = body.user.name,
+                                    userId       = body.user.id
                                 )
                                 _state.value = LoginState.SuccessTeller(body.user.name)
                             } else {
@@ -65,7 +67,8 @@ class LoginViewModel : ViewModel() {
                         "runner" -> {
                             store.saveRunner(
                                 token = body.token!!,
-                                name  = body.user.name
+                                name  = body.user.name,
+                                userId = body.user.id
                             )
                             _state.value = LoginState.SuccessRunner(body.user.name)
                         }

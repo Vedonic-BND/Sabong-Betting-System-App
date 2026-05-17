@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.isActive
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -53,6 +54,19 @@ class RunnerViewModel : ViewModel() {
     private val _notifications = MutableStateFlow<List<RunnerNotification>>(emptyList())
     val notifications: StateFlow<List<RunnerNotification>> = _notifications
 
+    // Track last successful sync timestamp to optimize polling
+    private var lastNotificationSyncTime: Long = 0L
+    
+    // Control polling - only use as fallback when WebSocket unavailable
+    private var pollingJob: Job? = null
+    private var isWebSocketConnected = false
+    
+    // Store current user ID for filtering notifications
+    private var currentUserId: Long = -1
+    
+    // Guard against duplicate setup
+    private var isRealtimeListenerSetup = false
+
     private suspend fun bearerToken(context: Context): String {
         val token = UserStore(context).token.first() ?: ""
         return "Bearer $token"
@@ -67,9 +81,22 @@ class RunnerViewModel : ViewModel() {
         _incomingRequest.value = null
     }
 
-    fun markNotificationAsRead(id: String) {
+    fun markNotificationAsRead(id: String, context: Context? = null) {
+        // Update local state immediately for instant UI feedback
         _notifications.value = _notifications.value.map {
             if (it.id == id) it.copy(isRead = true) else it
+        }
+        
+        // Also sync to database asynchronously to prevent polling from re-showing
+        if (context != null) {
+            viewModelScope.launch {
+                try {
+                    val token = bearerToken(context)
+                    RetrofitClient.api.markNotificationAsRead(token, id.toInt())
+                } catch (e: Exception) {
+                    android.util.Log.e("RunnerVM", "Failed to mark notification as read in database", e)
+                }
+            }
         }
     }
 
@@ -78,6 +105,7 @@ class RunnerViewModel : ViewModel() {
     }
 
     fun addNotification(title: String, message: String, data: org.json.JSONObject? = null, context: android.content.Context? = null) {
+        android.util.Log.d("RunnerVM", "📝 addNotification called - title: $title, message: $message")
         val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
         val timestamp = sdf.format(Date())
         val newNotification = RunnerNotification(
@@ -87,6 +115,7 @@ class RunnerViewModel : ViewModel() {
             data = data
         )
         _notifications.value = listOf(newNotification) + _notifications.value
+        android.util.Log.d("RunnerVM", "📝 Notification added to list. Total notifications: ${_notifications.value.size}")
 
         // Save to database
         if (context != null) {
@@ -110,9 +139,18 @@ class RunnerViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val token = bearerToken(context)
+                val currentTime = System.currentTimeMillis()
+                
+                // Check if enough time has passed since last sync (min 30 seconds as fallback)
+                if (isWebSocketConnected && (currentTime - lastNotificationSyncTime) < 30000) {
+                    android.util.Log.d("RunnerVM", "Skipping notification sync - WebSocket connected and data is fresh")
+                    return@launch
+                }
+                
                 android.util.Log.d("RunnerVM", "Fetching notifications with token: ${token.take(20)}...")
                 val response = RetrofitClient.api.getNotifications(token)
                 android.util.Log.d("RunnerVM", "Notifications response code: ${response.code()}")
+                
                 if (response.isSuccessful) {
                     val savedNotifications = response.body()?.map { notif ->
                         android.util.Log.d("RunnerVM", "Loaded notification: ${notif.title} - ${notif.message}")
@@ -127,21 +165,23 @@ class RunnerViewModel : ViewModel() {
                     } ?: emptyList()
                     android.util.Log.d("RunnerVM", "Total notifications loaded: ${savedNotifications.size}")
                     
-                    // Merge with existing notifications to avoid duplicates
-                    // Keep existing notifications (they may have been processed locally)
-                    // but update their read status and add new ones from the database
-                    val existingIds = _notifications.value.map { it.id }.toSet()
+                    // Simple, efficient deduplication using database IDs only
+                    // Database IDs are unique and reliable
+                    val existingDbIds = _notifications.value
+                        .map { it.id }
+                        .filter { it.all { c -> c.isDigit() } } // Only numeric IDs from DB
+                        .toSet()
+                    
                     val newNotifications = savedNotifications.filter { notif ->
-                        notif.id !in existingIds
+                        notif.id !in existingDbIds
                     }
                     
-                    // Update read status for existing notifications
-                    _notifications.value = _notifications.value.map { existing ->
-                        val dbNotif = savedNotifications.find { it.id == existing.id }
-                        if (dbNotif != null) existing.copy(isRead = dbNotif.isRead) else existing
-                    } + newNotifications
+                    // Replace entire list with fresh data from DB
+                    // This ensures consistency and eliminates stale local notifications
+                    _notifications.value = savedNotifications
                     
-                    android.util.Log.d("RunnerVM", "Total after merge: ${_notifications.value.size}")
+                    lastNotificationSyncTime = currentTime
+                    android.util.Log.d("RunnerVM", "Total after sync: ${_notifications.value.size}, new items: ${newNotifications.size}")
                 } else {
                     val errorBody = response.errorBody()?.string()
                     android.util.Log.e("RunnerVM", "Failed to load notifications: ${response.code()} - $errorBody")
@@ -152,9 +192,37 @@ class RunnerViewModel : ViewModel() {
         }
     }
 
-    fun setupRealtimeListener(context: Context) {
+    fun setupRealtimeListener(context: Context, userId: Long = -1) {
+        // Prevent duplicate setup - only set up once
+        if (isRealtimeListenerSetup) {
+            android.util.Log.d("RunnerVM", "⏭️  setupRealtimeListener already called, skipping duplicate setup")
+            return
+        }
+        isRealtimeListenerSetup = true
+        
+        // Store the current user ID for filtering
+        currentUserId = userId
+        android.util.Log.d("RunnerVM", "🔧 setupRealtimeListener called with userId=$userId")
+        
+        android.util.Log.d("RunnerVM", "🔧 Setting up ReverbManager callbacks...")
+        
+        ReverbManager.onConnected = {
+            viewModelScope.launch(Dispatchers.Main) {
+                isWebSocketConnected = true
+                android.util.Log.d("RunnerVM", "✅ WebSocket connected - polling is now fallback only")
+                stopPolling()
+            }
+        }
+        
+        ReverbManager.onDisconnected = {
+            viewModelScope.launch(Dispatchers.Main) {
+                isWebSocketConnected = false
+                android.util.Log.d("RunnerVM", "❌ WebSocket disconnected - starting fallback polling")
+                startFallbackPolling(context)
+            }
+        }
+        
         ReverbManager.onTellerCashUpdated = { data ->
-            // When a teller's cash is updated, refresh the tellers list
             viewModelScope.launch(Dispatchers.Main) {
                 loadTellers(context)
             }
@@ -164,7 +232,6 @@ class RunnerViewModel : ViewModel() {
             viewModelScope.launch(Dispatchers.Main) {
                 _incomingRequest.value = data
                 
-                // Add to notification history (will be saved to database)
                 val tellerName = data.optString("teller_name", "A teller")
                 val requestType = data.optString("request_type", "assistance")
                 val customMessage = data.optString("custom_message", "")
@@ -184,24 +251,57 @@ class RunnerViewModel : ViewModel() {
                     context = context
                 )
                 
-                // Trigger sound and vibration immediately on real-time notification
                 triggerSoundAndVibration(context)
             }
         }
 
         ReverbManager.onRunnerAccepted = { data ->
             viewModelScope.launch(Dispatchers.Main) {
-                val assignedRunnerName = data.optString("runner_name", "A runner")
-                val tellerName = data.optString("teller_name", "A teller")
+                // ✅ FILTER: For runners, only show if they accepted the request (runner_id matches)
+                val runnerIdInNotif = data.optLong("runner_id", -1L)
                 
-                addNotification(
-                    title = "Request Assigned",
-                    message = "$assignedRunnerName has been assigned to $tellerName.",
-                    data = data,
-                    context = context
-                )
+                if (runnerIdInNotif == currentUserId || runnerIdInNotif == -1L) {
+                    val assignedRunnerName = data.optString("runner_name", "A runner")
+                    val tellerName = data.optString("teller_name", "A teller")
+                    
+                    addNotification(
+                        title = "Request Assigned",
+                        message = "$assignedRunnerName has been assigned to $tellerName.",
+                        data = data,
+                        context = context
+                    )
+                } else {
+                    android.util.Log.d("RunnerVM", "Filtering out runnerAccepted notification - not your acceptance. " +
+                        "Current user: $currentUserId, Runner in notification: $runnerIdInNotif")
+                }
             }
         }
+
+        ReverbManager.onRunnerAssignedByOwner = { data ->
+            android.util.Log.d("RunnerVM", "🎯🎯🎯 [CALLBACK] onRunnerAssignedByOwner TRIGGERED! data: $data")
+            viewModelScope.launch(Dispatchers.Main) {
+                // ✅ FILTER: Only show if owner assigned this runner
+                val runnerIdInNotif = data.optLong("runner_id", -1L)
+                
+                android.util.Log.d("RunnerVM", "🎯🎯🎯 onRunnerAssignedByOwner TRIGGERED! current user: $currentUserId, runner in notif: $runnerIdInNotif, data: $data")
+                
+                if (runnerIdInNotif == currentUserId || runnerIdInNotif == -1L) {
+                    val tellerName = data.optString("teller_name", "A teller")
+                    
+                    android.util.Log.d("RunnerVM", "✅ Adding assignment notification - Assigned to: $tellerName")
+                    addNotification(
+                        title = "Assignment",
+                        message = "You've been assigned to $tellerName.",
+                        data = data,
+                        context = context
+                    )
+                } else {
+                    android.util.Log.d("RunnerVM", "⛔ Filtering out runnerAssignedByOwner notification - not for you. " +
+                        "Current user: $currentUserId, Runner in notification: $runnerIdInNotif")
+                }
+            }
+        }
+        android.util.Log.d("RunnerVM", "✅ onRunnerAssignedByOwner callback registered!")
     }
 
     fun loadTellers(context: Context) {
@@ -247,14 +347,16 @@ class RunnerViewModel : ViewModel() {
         viewModelScope.launch {
             if (_history.value.isEmpty()) _isLoading.value = true
             try {
-                val response = RetrofitClient.api.getRunnerHistory(bearerToken(context))
+                val token = bearerToken(context)
+                val response = RetrofitClient.api.getRunnerHistory(token)
                 if (response.isSuccessful) {
                     _history.value = response.body() ?: emptyList()
                 } else {
-                    // _error.value = "Failed to load history"
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    android.util.Log.e("RunnerVM", "Error loading history: $errorBody")
                 }
             } catch (e: Exception) {
-                _error.value = "Connection error"
+                android.util.Log.e("RunnerVM", "Exception loading history", e)
             } finally {
                 _isLoading.value = false
             }
@@ -264,7 +366,7 @@ class RunnerViewModel : ViewModel() {
     fun createTransaction(context: Context, tellerId: Int, amount: Double, type: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            clearMessages()
+            _error.value = null
             try {
                 // Convert collect/provide to cash_in/cash_out for API
                 val apiType = if (type == "collect") "cash_out" else "cash_in"
@@ -294,6 +396,43 @@ class RunnerViewModel : ViewModel() {
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    // ── WebSocket and Polling Management ─────────────────
+
+    /**
+     * Start fallback polling for notifications when WebSocket is unavailable.
+     * Uses 30-second intervals to minimize database load.
+     */
+    private fun startFallbackPolling(context: Context) {
+        if (pollingJob?.isActive == true) {
+            android.util.Log.d("RunnerVM", "Polling already active, skipping duplicate start")
+            return
+        }
+        
+        pollingJob = viewModelScope.launch {
+            android.util.Log.d("RunnerVM", "Starting fallback notification polling (30s interval)")
+            while (isActive && !isWebSocketConnected) {
+                delay(30000) // Poll every 30 seconds as fallback only
+                if (!isWebSocketConnected) {
+                    android.util.Log.d("RunnerVM", "Polling: fetching notifications (WebSocket unavailable)")
+                    loadSavedNotifications(context)
+                } else {
+                    android.util.Log.d("RunnerVM", "WebSocket reconnected, stopping fallback polling")
+                    break
+                }
+            }
+        }
+    }
+
+    /**
+     * Stop fallback polling when WebSocket is available.
+     */
+    private fun stopPolling() {
+        if (pollingJob?.isActive == true) {
+            android.util.Log.d("RunnerVM", "Stopping fallback notification polling")
+            pollingJob?.cancel()
         }
     }
 
@@ -423,6 +562,7 @@ class RunnerViewModel : ViewModel() {
 
     fun logout(context: Context, onDone: () -> Unit) {
         stopAutoRefresh()
+        stopPolling()
         viewModelScope.launch {
             try {
                 RetrofitClient.api.logout(bearerToken(context))
@@ -435,5 +575,6 @@ class RunnerViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         stopAutoRefresh()
+        stopPolling()
     }
 }

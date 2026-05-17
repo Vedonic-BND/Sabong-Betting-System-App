@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════════════════════
+RUNNER NOTIFICATION POPUP FIX - SUMMARY
+═══════════════════════════════════════════════════════════════════
+
+ROOT CAUSE:
+-----------
+Multiple ViewModels were competing to manage global ReverbManager callbacks.
+When one ViewModel cleared/reset connections, it affected all screens.
+
+FILES MODIFIED:
+---------------
+
+1. ReverbViewModel.kt
+   ├─ REMOVED: onConnected callback assignment (was conflicting with RunnerViewModel)
+   ├─ REMOVED: onDisconnected callback assignment (was conflicting with RunnerViewModel)
+   ├─ REMOVED: ReverbManager.disconnect() call in disconnect() method
+   └─ REASON: ReverbManager is global singleton used by ALL screens
+
+2. RunnerViewModel.kt
+   ├─ ADDED: isRealtimeListenerSetup flag (prevents duplicate setup)
+   └─ REASON: Extra safety against race conditions
+
+3. Navigation.kt
+   ├─ REMOVED: LaunchedEffect(role, userId) that called setupRealtimeListener()
+   └─ REASON: RunnerScreen's LaunchedEffect already handles this
+
+4. RunnerScreen.kt
+   ├─ CHANGED: Removed "&& !it.isRead" filter from notification detection
+   └─ REASON: Show ALL Assignment notifications, not just unread ones
+
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS FIXES:
+----------------
+✅ Callback no longer becomes NULL when event arrives
+✅ WebSocket stays connected across all screens
+✅ Assignment popup will appear when owner assigns runner
+✅ Sound and vibration will trigger
+✅ Auto-dismiss will work after 5 seconds
+
+═══════════════════════════════════════════════════════════════════
+
+TESTING:
+--------
+1. Log in as Runner
+2. Wait for "✅ onRunnerAssignedByOwner callback registered!" log
+3. Navigate to RunnerScreen (or stay there)
+4. Open Admin panel and assign runner to teller
+5. Watch for:
+   - Popup appears with assignment message
+   - Sound plays
+   - Device vibrates
+   - Popup auto-dismisses after 5 seconds
+
+═══════════════════════════════════════════════════════════════════
+
+CRITICAL LOGS TO WATCH:
+-----------------------
+✅ "✅ onRunnerAssignedByOwner callback registered!" - Callback set
+✅ "Callback status: onRunnerAssignedByOwner = SET ✅" - Ready to receive
+✅ "🎯🎯🎯 [CALLBACK] onRunnerAssignedByOwner TRIGGERED!" - Event received
+✅ "✅ Found Assignment notification" - Popup triggered
+❌ "Callback status: onRunnerAssignedByOwner = NULL ❌" - SHOULD NOT APPEAR
+
+═══════════════════════════════════════════════════════════════════

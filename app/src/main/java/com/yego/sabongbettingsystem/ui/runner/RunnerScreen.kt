@@ -7,6 +7,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,9 +23,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,6 +46,7 @@ fun RunnerScreen(
     navController: NavController,
     onLogout: () -> Unit
 ) {
+    android.util.Log.d("RunnerScreen", "🏃 RunnerScreen COMPOSABLE STARTED!")
     val context = LocalContext.current
     val viewModel = viewModel<RunnerViewModel>()
     val tellers by viewModel.tellers.collectAsState()
@@ -54,25 +58,31 @@ fun RunnerScreen(
     val incomingRequest by viewModel.incomingRequest.collectAsState()
     val userStore = remember { UserStore(context) }
     val runnerName by userStore.name.collectAsState(initial = "Runner")
+    val userId by userStore.userId.collectAsState(initial = "")
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showTransactionDialog by remember { mutableStateOf<Pair<TellerCashStatus, String>?>(null) }
     var amountText by remember { mutableStateOf("") }
+    var runnerAssignment by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair(message, tellerName)
 
     LaunchedEffect(Unit) {
-        android.util.Log.d("RunnerScreen", "LaunchedEffect starting - loading initial data")
+        android.util.Log.d("RunnerScreen", "🚀 LaunchedEffect starting - loading initial data")
         viewModel.loadTellers(context)
         viewModel.loadHistory(context)
         viewModel.loadSavedNotifications(context)
-        viewModel.setupRealtimeListener(context)
+        
+        // Connect Reverb FIRST before setting up listeners
+        android.util.Log.d("RunnerScreen", "🔌 Connecting ReverbManager...")
         ReverbManager.connect()
         
-        // Periodically refresh saved notifications every 2 seconds (reduced from 3)
-        while (true) {
-            delay(2000)
-            android.util.Log.d("RunnerScreen", "Polling notifications...")
-            viewModel.loadSavedNotifications(context)
-        }
+        // Then set up listeners with user ID
+        android.util.Log.d("RunnerScreen", "📱 Current userId from store: '$userId'")
+        val parsedUserId = userId?.toLongOrNull() ?: -1
+        android.util.Log.d("RunnerScreen", "🔧 Calling setupRealtimeListener with userId=$parsedUserId")
+        viewModel.setupRealtimeListener(context, parsedUserId)
+        
+        // Polling is now handled by ViewModel as fallback only when WebSocket is unavailable.
+        // WebSocket will emit real-time notifications via ReverbManager callbacks.
     }
 
     // Auto-clear messages after 3 seconds
@@ -87,6 +97,63 @@ fun RunnerScreen(
         if (success != null) {
             delay(3000)
             viewModel.clearMessages()
+        }
+    }
+
+    // ── Watch for Runner Assignment Notifications ──
+    LaunchedEffect(notifications) {
+        android.util.Log.d("RunnerScreen", "📋 Checking notifications list (${notifications.size} total)")
+        notifications.forEach { notif ->
+            android.util.Log.d("RunnerScreen", "   - Title: '${notif.title}', isRead: ${notif.isRead}, message: ${notif.message}")
+        }
+        
+        val assignmentNotif = notifications.firstOrNull { 
+            it.title == "Assignment"
+        }
+        
+        if (assignmentNotif != null) {
+            android.util.Log.d("RunnerScreen", "✅ Found unread Assignment notification: ${assignmentNotif.message}")
+            runnerAssignment = Pair(assignmentNotif.message, "")
+            android.util.Log.d("RunnerScreen", "🎯 Assignment notification triggered: ${assignmentNotif.message}")
+            
+            // Play notification sound
+            try {
+                val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                val r = RingtoneManager.getRingtone(context, notification)
+                r.play()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            // Vibrate
+            try {
+                val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                    vibratorManager.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(500)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        } else {
+            android.util.Log.d("RunnerScreen", "❌ No unread Assignment notification found")
+        }
+    }
+    
+    // ── Auto-dismiss assignment notification after 5 seconds ──
+    LaunchedEffect(runnerAssignment) {
+        if (runnerAssignment != null) {
+            delay(5000)
+            runnerAssignment = null
         }
     }
 
@@ -124,153 +191,69 @@ fun RunnerScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Runner Panel", fontWeight = FontWeight.Bold)
-                        Text(
-                            text = "Runner: $runnerName",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadTellers(context); viewModel.loadHistory(context) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                    IconButton(onClick = { viewModel.logout(context, onLogout) }) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = selectedTabIndex == 0,
-                    onClick = { selectedTabIndex = 0 },
-                    icon = { Icon(Icons.Default.People, contentDescription = null) },
-                    label = { Text("Tellers") }
-                )
-                NavigationBarItem(
-                    selected = selectedTabIndex == 1,
-                    onClick = { selectedTabIndex = 1 },
-                    icon = { 
-                        BadgedBox(badge = {
-                            if (notifications.any { !it.isRead }) {
-                                Badge { Text(notifications.count { !it.isRead }.toString()) }
-                            }
-                        }) {
-                            Icon(Icons.Default.Notifications, contentDescription = null)
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text("Runner Panel", fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "Runner: $runnerName",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     },
-                    label = { Text("Alerts") }
-                )
-                NavigationBarItem(
-                    selected = selectedTabIndex == 2,
-                    onClick = { selectedTabIndex = 2 },
-                    icon = { Icon(Icons.Default.History, contentDescription = null) },
-                    label = { Text("History") }
-                )
-            }
-        }
-    ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            
-            // ── Real-time Notification ──
-            if (incomingRequest != null) {
-                Card(
-                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.NotificationsActive, null, tint = MaterialTheme.colorScheme.primary)
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "RUNNER REQUESTED!",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                val tellerName = incomingRequest!!.optString("teller_name", "A teller")
-                                val requestType = incomingRequest!!.optString("request_type", "assistance")
-                                val customMessage = incomingRequest!!.optString("custom_message", "")
-                                
-                                val displayMessage = when (requestType) {
-                                    "assistance" -> "Assistance needed at counter"
-                                    "need_cash" -> "Runner needed - Need cash"
-                                    "collect_cash" -> "Runner needed - Collect excess cash"
-                                    "other" -> "Custom request: $customMessage"
-                                    else -> "Assistance needed at counter"
-                                }
-                                
-                                Text(
-                                    text = "$tellerName - $displayMessage",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
+                    actions = {
+                        IconButton(onClick = { viewModel.loadTellers(context); viewModel.loadHistory(context) }) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                         }
-                        
-                        // Accept and Decline buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = { 
-                                    val tellerId = incomingRequest!!.optInt("teller_id", -1)
-                                    if (tellerId > 0) {
-                                        viewModel.acceptRequest(context, tellerId)
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                enabled = !isLoading
-                            ) {
-                                if (isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Text("ACCEPT", fontWeight = FontWeight.Bold)
-                                }
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    // Just clear locally as requested
-                                    viewModel.clearIncomingRequest()
-                                },
-                                modifier = Modifier.weight(1f),
-                                enabled = !isLoading
-                            ) {
-                                Text("DECLINE", fontWeight = FontWeight.Bold)
-                            }
+                        IconButton(onClick = { viewModel.logout(context, onLogout) }) {
+                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
                         }
                     }
+                )
+            },
+            bottomBar = {
+                NavigationBar {
+                    NavigationBarItem(
+                        selected = selectedTabIndex == 0,
+                        onClick = { selectedTabIndex = 0 },
+                        icon = { Icon(Icons.Default.People, contentDescription = null) },
+                        label = { Text("Tellers") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTabIndex == 1,
+                        onClick = { selectedTabIndex = 1 },
+                        icon = { 
+                            BadgedBox(badge = {
+                                if (notifications.any { !it.isRead }) {
+                                    Badge { Text(notifications.count { !it.isRead }.toString()) }
+                                }
+                            }) {
+                                Icon(Icons.Default.Notifications, contentDescription = null)
+                            }
+                        },
+                        label = { Text("Alerts") }
+                    )
+                    NavigationBarItem(
+                        selected = selectedTabIndex == 2,
+                        onClick = { selectedTabIndex = 2 },
+                        icon = { Icon(Icons.Default.History, contentDescription = null) },
+                        label = { Text("History") }
+                    )
                 }
             }
+        ) { padding ->
+            Column(modifier = Modifier.padding(padding).fillMaxSize()) {
 
-            if (error != null) {
-                ErrorMessage(error!!, onDismiss = { viewModel.clearMessages() })
-            }
-            if (success != null) {
-                SuccessMessage(success!!, onDismiss = { viewModel.clearMessages() })
-            }
+                if (error != null) {
+                    ErrorMessage(error!!, onDismiss = { viewModel.clearMessages() })
+                }
+                if (success != null) {
+                    SuccessMessage(success!!, onDismiss = { viewModel.clearMessages() })
+                }
 
             when (selectedTabIndex) {
                 0 -> {
@@ -320,7 +303,7 @@ fun RunnerScreen(
                     NotificationHistoryList(
                         notifications = notifications,
                         onClear = { viewModel.clearNotifications() },
-                        onMarkAsRead = { viewModel.markNotificationAsRead(it) }
+                        onMarkAsRead = { viewModel.markNotificationAsRead(it, context) }
                     )
                 }
                 2 -> {
@@ -417,6 +400,181 @@ fun RunnerScreen(
                     }
                 }
             )
+        }
+        }
+        
+        // ── Floating Overlay for Real-time Notification ──
+        if (incomingRequest != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(enabled = false) { }, // Prevent interaction with elements below
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(0.9f),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.NotificationsActive,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        
+                        Text(
+                            text = "RUNNER REQUESTED!",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        val tellerName = incomingRequest!!.optString("teller_name", "A teller")
+                        val requestType = incomingRequest!!.optString("request_type", "assistance")
+                        val customMessage = incomingRequest!!.optString("custom_message", "")
+                        
+                        val displayMessage = when (requestType) {
+                            "assistance" -> "Assistance needed at counter"
+                            "need_cash" -> "Runner needed - Need cash"
+                            "collect_cash" -> "Runner needed - Collect excess cash"
+                            "other" -> "Custom request: $customMessage"
+                            else -> "Assistance needed at counter"
+                        }
+                        
+                        Text(
+                            text = tellerName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Text(
+                            text = displayMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // Accept and Decline buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    // Just clear locally
+                                    viewModel.clearIncomingRequest()
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isLoading
+                            ) {
+                                Text("DECLINE", fontWeight = FontWeight.Bold)
+                            }
+                            
+                            Button(
+                                onClick = { 
+                                    val tellerId = incomingRequest!!.optInt("teller_id", -1)
+                                    if (tellerId > 0) {
+                                        viewModel.acceptRequest(context, tellerId)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isLoading
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Text("ACCEPT", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ── Floating Overlay for Runner Assignment Notification ──
+        if (runnerAssignment != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable(enabled = false) { }, // Prevent interaction with elements below
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(0.85f),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            Icons.Default.AssignmentTurnedIn,
+                            null,
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        
+                        Text(
+                            text = "ASSIGNMENT",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Text(
+                            text = runnerAssignment!!.first,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    runnerAssignment = null
+                                },
+                                modifier = Modifier.weight(0.5f)
+                            ) {
+                                Text("DISMISS", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

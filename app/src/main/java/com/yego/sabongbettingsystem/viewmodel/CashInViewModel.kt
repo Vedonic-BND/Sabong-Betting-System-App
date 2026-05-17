@@ -10,9 +10,11 @@ import com.yego.sabongbettingsystem.data.model.PlaceBetRequest
 import com.yego.sabongbettingsystem.data.store.UserStore
 import com.yego.sabongbettingsystem.data.model.AssistanceRequest
 import com.yego.sabongbettingsystem.data.model.RunnerTransactionResponse
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -56,6 +58,13 @@ class CashInViewModel : ViewModel() {
     private val _tellerCashStatus = MutableStateFlow<com.yego.sabongbettingsystem.data.model.TellerCashStatusResponse?>(null)
     val tellerCashStatus: StateFlow<com.yego.sabongbettingsystem.data.model.TellerCashStatusResponse?> = _tellerCashStatus
 
+    // Track last successful sync timestamp to optimize polling
+    private var lastNotificationSyncTime: Long = 0L
+    
+    // Control polling - only use as fallback when WebSocket unavailable
+    private var pollingJob: kotlinx.coroutines.Job? = null
+    private var isWebSocketConnected = false
+
     private suspend fun bearerToken(context: Context): String {
         val token = UserStore(context).token.first() ?: ""
         return "Bearer $token"
@@ -94,9 +103,22 @@ class CashInViewModel : ViewModel() {
         }
     }
 
-    fun markNotificationAsRead(id: String) {
+    fun markNotificationAsRead(id: String, context: Context? = null) {
+        // Update local state immediately for instant UI feedback
         _notifications.value = _notifications.value.map {
             if (it.id == id) it.copy(isRead = true) else it
+        }
+        
+        // Also sync to database asynchronously to prevent polling from re-showing
+        if (context != null) {
+            viewModelScope.launch {
+                try {
+                    val token = bearerToken(context)
+                    RetrofitClient.api.markNotificationAsRead(token, id.toInt())
+                } catch (e: Exception) {
+                    android.util.Log.e("CashInVM", "Failed to mark notification as read in database", e)
+                }
+            }
         }
     }
 
@@ -105,12 +127,25 @@ class CashInViewModel : ViewModel() {
     }
 
     fun loadSavedNotifications(context: Context) {
+        if (!isWebSocketConnected) {
+            startFallbackPolling(context)
+        }
         viewModelScope.launch {
             try {
                 val token = bearerToken(context)
+                val currentTime = System.currentTimeMillis()
+                
+                // Check if enough time has passed since last sync (min 30 seconds as fallback)
+                if (isWebSocketConnected && (currentTime - lastNotificationSyncTime) < 30000) {
+                    android.util.Log.d("CashInVM", "Skipping notification sync - WebSocket connected and data is fresh")
+                    return@launch
+                }
+                
+                android.util.Log.d("CashInVM", "Fetching notifications with token: ${token.take(20)}...")
                 val response = RetrofitClient.api.getNotifications(token)
                 if (response.isSuccessful) {
                     val savedNotifications = response.body()?.map { notif ->
+                        android.util.Log.d("CashInVM", "Loaded notification: ${notif.title} - ${notif.message}")
                         TellerNotification(
                             id = notif.id.toString(),
                             title = notif.title,
@@ -120,7 +155,21 @@ class CashInViewModel : ViewModel() {
                             isRead = notif.is_read
                         )
                     } ?: emptyList()
+                    
+                    // Simple, efficient deduplication using database IDs only
+                    val existingDbIds = _notifications.value
+                        .map { it.id }
+                        .filter { it.all { c -> c.isDigit() } } // Only numeric IDs from DB
+                        .toSet()
+                    
+                    // Replace entire list with fresh data from DB for consistency
                     _notifications.value = savedNotifications
+                    lastNotificationSyncTime = currentTime
+                    
+                    android.util.Log.d("CashInVM", "Notifications synced: ${savedNotifications.size} total")
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    android.util.Log.e("CashInVM", "Failed to load notifications: ${response.code()} - $errorBody")
                 }
             } catch (e: Exception) {
                 android.util.Log.e("CashInVM", "Failed to load saved notifications", e)
@@ -215,6 +264,56 @@ class CashInViewModel : ViewModel() {
             } catch (e: Exception) {
                 // Silently ignore or handle
             }
+        }
+    }
+
+    // ── WebSocket and Polling Management ─────────────────
+
+    /**
+     * Start fallback polling for notifications when WebSocket is unavailable.
+     * Uses 30-second intervals to minimize database load.
+     */
+    fun startFallbackPolling(context: Context?) {
+        if (context == null) return
+        if (pollingJob?.isActive == true) {
+            android.util.Log.d("CashInVM", "Polling already active, skipping duplicate start")
+            return
+        }
+        
+        pollingJob = viewModelScope.launch {
+            android.util.Log.d("CashInVM", "Starting fallback notification polling (30s interval)")
+            while (isActive && !isWebSocketConnected) {
+                delay(30000) // Poll every 30 seconds as fallback only
+                if (!isWebSocketConnected) {
+                    android.util.Log.d("CashInVM", "Polling: fetching notifications (WebSocket unavailable)")
+                    loadSavedNotifications(context)
+                } else {
+                    android.util.Log.d("CashInVM", "WebSocket reconnected, stopping fallback polling")
+                    break
+                }
+            }
+        }
+    }
+
+    /**
+     * Stop fallback polling when WebSocket is available.
+     */
+    fun stopPolling() {
+        if (pollingJob?.isActive == true) {
+            android.util.Log.d("CashInVM", "Stopping fallback notification polling")
+            pollingJob?.cancel()
+        }
+    }
+
+    /**
+     * Track WebSocket connection status for polling management.
+     */
+    fun setWebSocketConnected(connected: Boolean) {
+        isWebSocketConnected = connected
+        if (connected) {
+            stopPolling()
+        } else {
+            startFallbackPolling(null) // Will get context in next load call
         }
     }
 
@@ -333,6 +432,8 @@ class CashInViewModel : ViewModel() {
     }
 
     fun logout(context: Context, onDone: () -> Unit) {
+        stopAutoRefresh()
+        stopPolling()
         viewModelScope.launch {
             try {
                 RetrofitClient.api.logout(bearerToken(context))
@@ -349,7 +450,7 @@ class CashInViewModel : ViewModel() {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
             while (true) {
-                kotlinx.coroutines.delay(5000)
+                delay(5000)
                 loadCurrentFight(context)
             }
         }
@@ -357,5 +458,11 @@ class CashInViewModel : ViewModel() {
 
     fun stopAutoRefresh() {
         refreshJob?.cancel()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopAutoRefresh()
+        stopPolling()
     }
 }

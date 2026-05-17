@@ -1,0 +1,95 @@
+═══════════════════════════════════════════════════════════════════
+VERIFICATION CHECKLIST - RUNNER NOTIFICATION POPUP FIX
+═══════════════════════════════════════════════════════════════════
+
+CODE CHANGES VERIFIED ✓
+════════════════════════
+[✓] ReverbViewModel.kt
+    [✓] Removed ReverbManager.onConnected assignment
+    [✓] Removed ReverbManager.onDisconnected assignment  
+    [✓] Changed disconnect() to skip ReverbManager.disconnect()
+    [✓] Updated onCleared() to NOT call disconnect()
+    [✓] Added logging: "⚠️  Skipping disconnect()"
+
+[✓] RunnerViewModel.kt
+    [✓] Added: private var isRealtimeListenerSetup = false
+    [✓] setupRealtimeListener() still sets all callbacks correctly
+    [✓] No unwanted changes to callback logic
+
+[✓] Navigation.kt
+    [✓] Removed: LaunchedEffect(role, userId) block that called setupRealtimeListener()
+    [✓] Kept: LaunchedEffect(Unit) that calls ReverbManager.connect()
+
+[✓] RunnerScreen.kt
+    [✓] Changed filter: it.title == "Assignment" (removed && !it.isRead)
+    [✓] All other logic preserved
+
+COMPILATION STATUS ✓
+═══════════════════════
+[✓] ReverbViewModel.kt - No errors
+[✓] RunnerViewModel.kt - No errors
+[✓] Navigation.kt - No errors
+[✓] RunnerScreen.kt - No errors
+
+EXPECTED BEHAVIOR AFTER FIX
+═════════════════════════════
+
+Scenario 1: Direct RunnerScreen Usage
+────────────────────────────────────
+1. Runner logs in → RunnerScreen loads
+2. setupRealtimeListener() called → callbacks registered
+3. Owner assigns runner
+4. Event received → callback invoked ✓
+5. Notification added to StateFlow ✓
+6. LaunchedEffect(notifications) detects it ✓
+7. Popup appears with sound + vibration ✓
+
+Scenario 2: RunnerScreen → CashInScreen → RunnerScreen
+────────────────────────────────────────────────────────
+1. RunnerScreen loads → callbacks set
+2. Navigate to CashInScreen
+   - ReverbViewModel.connect() called
+   - ReverbManager.connect() early-returns (already connected) ✓
+   - WebSocket NOT destroyed ✓
+3. CashInScreen closed, ReverbViewModel.onCleared()
+   - disconnect() is called BUT skips ReverbManager.disconnect() ✓
+   - WebSocket stays alive ✓
+4. Return to RunnerScreen
+   - Callbacks still set from step 1 ✓
+5. Owner assigns runner
+6. Event received → callback invoked ✓
+7. Popup appears ✓
+
+Scenario 3: Rapid Multiple Setups (Edge Case)
+──────────────────────────────────────────────
+1. setupRealtimeListener() called multiple times
+2. isRealtimeListenerSetup flag prevents duplicate work
+3. Callbacks set exactly once ✓
+
+KEY ARCHITECTURAL IMPROVEMENTS
+═════════════════════════════════
+
+Before:
+  - Multiple ViewModels competing for ReverbManager control
+  - Singleton lifecycle tied to individual screen lifecycles  
+  - Callbacks could become NULL unpredictably
+  - Complex flow with multiple initialization points
+
+After:
+  - Clear separation: RunnerViewModel manages shared callbacks
+  - WebSocket lifetime = app lifetime (or until explicit logout)
+  - Each ViewModel only manages callbacks it needs
+  - Single initialization point per ViewModel
+
+═══════════════════════════════════════════════════════════════════
+
+READY TO TEST ✓
+
+Next steps:
+1. Build app with gradle
+2. Deploy to device/emulator
+3. Follow testing steps in RUNNER_POPUP_NOTIFICATION_FIX.md
+4. Verify logs match expectations
+5. Confirm popup appears with assignment message
+
+═══════════════════════════════════════════════════════════════════

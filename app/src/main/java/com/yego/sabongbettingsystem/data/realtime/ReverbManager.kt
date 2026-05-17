@@ -1,5 +1,6 @@
 package com.yego.sabongbettingsystem.data.realtime
 
+import android.content.Context
 import com.pusher.client.Pusher
 import com.pusher.client.PusherOptions
 import com.pusher.client.channel.Channel
@@ -19,20 +20,21 @@ object ReverbManager {
     private var pusher  : Pusher?  = null
     private var channel : Channel? = null
 
-    var onFightUpdated      : ((JSONObject) -> Unit)? = null
-    var onBetPlaced         : ((JSONObject) -> Unit)? = null
-    var onWinnerDeclared    : ((JSONObject) -> Unit)? = null
-    var onTellerCashUpdated : ((JSONObject) -> Unit)? = null
-    var onCashRequested     : ((JSONObject) -> Unit)? = null
-    var onRunnerAccepted    : ((JSONObject) -> Unit)? = null
-    var onRunnerDeclined    : ((JSONObject) -> Unit)? = null
-    var onConnected         : (() -> Unit)?           = null
-    var onDisconnected      : (() -> Unit)?           = null
+    var onFightUpdated         : ((JSONObject) -> Unit)? = null
+    var onBetPlaced            : ((JSONObject) -> Unit)? = null
+    var onWinnerDeclared       : ((JSONObject) -> Unit)? = null
+    var onTellerCashUpdated    : ((JSONObject) -> Unit)? = null
+    var onCashRequested        : ((JSONObject) -> Unit)? = null
+    var onRunnerAccepted       : ((JSONObject) -> Unit)? = null
+    var onRunnerAssignedByOwner: ((JSONObject) -> Unit)? = null
+    var onRunnerDeclined       : ((JSONObject) -> Unit)? = null
+    var onConnected            : (() -> Unit)?           = null
+    var onDisconnected         : (() -> Unit)?           = null
 
     fun isConnected(): Boolean =
         pusher?.connection?.state == ConnectionState.CONNECTED
 
-    fun connect() {
+    fun connect(context: Any? = null) {
         if (isConnected()) {
             onConnected?.invoke()
             return
@@ -189,6 +191,19 @@ object ReverbManager {
                 val raw     = JSONObject(event.data)
                 val payload = if (raw.has("data")) raw.getJSONObject("data") else raw
                 onRunnerDeclined?.invoke(payload)
+            } catch (e: Exception) {
+                android.util.Log.e("Reverb", "Parse error: ${e.message}")
+            }
+        }
+
+        cashRequestChannel.bind("runner.assigned-by-owner") { event ->
+            android.util.Log.d("Reverb", "🎯 runner.assigned-by-owner: ${event.data}")
+            try {
+                val raw     = JSONObject(event.data)
+                val payload = if (raw.has("data")) raw.getJSONObject("data") else raw
+                android.util.Log.d("Reverb", "🎯 Callback status: onRunnerAssignedByOwner = ${if (onRunnerAssignedByOwner == null) "NULL ❌" else "SET ✅"}")
+                android.util.Log.d("Reverb", "🎯 Invoking onRunnerAssignedByOwner callback with payload: $payload")
+                onRunnerAssignedByOwner?.invoke(payload)
             } catch (e: Exception) {
                 android.util.Log.e("Reverb", "Parse error: ${e.message}")
             }

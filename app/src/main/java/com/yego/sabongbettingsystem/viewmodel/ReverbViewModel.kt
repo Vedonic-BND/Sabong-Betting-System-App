@@ -1,12 +1,15 @@
 package com.yego.sabongbettingsystem.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import com.yego.sabongbettingsystem.data.realtime.ReverbManager
+import com.yego.sabongbettingsystem.data.store.UserStore
 import kotlinx.coroutines.Dispatchers
 
 data class ReverbFightState(
@@ -38,6 +41,9 @@ class ReverbViewModel : ViewModel() {
 
     private val _runnerDeclined = MutableStateFlow<JSONObject?>(null)
     val runnerDeclined: StateFlow<JSONObject?> = _runnerDeclined
+    
+    // Store current user ID for filtering notifications
+    private var currentUserId: Long = -1
 
     fun resetState() {
         _fightState.value = null
@@ -54,13 +60,45 @@ class ReverbViewModel : ViewModel() {
         _runnerDeclined.value = null
     }
 
-    fun connect() {
-        // 1. set callbacks FIRST
-        ReverbManager.onConnected = {
-            viewModelScope.launch(Dispatchers.Main) { _connected.value = true }
+    fun connect(context: Any? = null, userId: Long = -1) {
+        // Store the current user ID for filtering
+        currentUserId = userId
+        
+        // If userId wasn't provided or is -1, try to fetch from UserStore
+        if (currentUserId == -1L && context is Context) {
+            viewModelScope.launch {
+                try {
+                    val userStore = UserStore(context)
+                    val storedUserId = userStore.userId.first()?.toLongOrNull()
+                    if (storedUserId != null && storedUserId != -1L) {
+                        currentUserId = storedUserId
+                        android.util.Log.d("ReverbVM", "✅ Fetched userId from UserStore: $currentUserId")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ReverbVM", "Failed to fetch userId from UserStore: ${e.message}")
+                }
+            }
+        } else if (currentUserId != -1L) {
+            android.util.Log.d("ReverbVM", "Using provided userId: $currentUserId")
         }
+        
+        // 1. set callbacks FIRST (only for events this screen cares about)
+        // NOTE: Don't override onConnected/onDisconnected - let RunnerViewModel or other screens manage those
+        // BUT we still track connection status for UI purposes in ReverbViewModel
+        
+        // Track connection status for UI badge (WsStatusBadge)
+        ReverbManager.onConnected = {
+            viewModelScope.launch(Dispatchers.Main) {
+                _connected.value = true
+                android.util.Log.d("ReverbVM", "✅ WebSocket connected - ReverbVM UI updated")
+            }
+        }
+        
         ReverbManager.onDisconnected = {
-            viewModelScope.launch(Dispatchers.Main) { _connected.value = false }
+            viewModelScope.launch(Dispatchers.Main) {
+                _connected.value = false
+                android.util.Log.d("ReverbVM", "❌ WebSocket disconnected - ReverbVM UI updated")
+            }
         }
         
         ReverbManager.onFightUpdated = { data ->
@@ -113,7 +151,21 @@ class ReverbViewModel : ViewModel() {
 
         ReverbManager.onRunnerAccepted = { data ->
             viewModelScope.launch(Dispatchers.Main) {
-                _runnerAccepted.value = data
+                // For RunnerAccepted events, we should show them to:
+                // 1. The teller who made the request (teller_id matches current user)
+                // 2. Always show if we couldn't get user ID (currentUserId = -1)
+                // This ensures tellers always see when their requests are accepted
+                val tellerIdInNotif = data.optLong("teller_id", -1L)
+                
+                android.util.Log.d("ReverbVM", "RunnerAccepted Event: teller_id=$tellerIdInNotif, currentUserId=$currentUserId")
+                
+                // Show if: (1) it's for this teller, OR (2) we don't have a user ID yet
+                if (currentUserId == -1L || tellerIdInNotif == currentUserId) {
+                    android.util.Log.d("ReverbVM", "✅ Setting runnerAccepted - MATCH! (showing to teller)")
+                    _runnerAccepted.value = data
+                } else {
+                    android.util.Log.d("ReverbVM", "❌ Filtering out runnerAccepted - not for current teller (teller_id=$tellerIdInNotif, currentUserId=$currentUserId)")
+                }
             }
         }
 
@@ -128,11 +180,16 @@ class ReverbViewModel : ViewModel() {
     }
 
     fun disconnect() {
-        ReverbManager.disconnect()
+        // ⚠️ IMPORTANT: Don't disconnect the global ReverbManager singleton!
+        // The WebSocket should remain connected for the entire app lifetime.
+        // Multiple screens may need real-time events, so we cannot disconnect
+        // when one screen closes.
+        android.util.Log.d("ReverbVM", "⚠️  Skipping disconnect() - ReverbManager is global singleton")
     }
 
     override fun onCleared() {
         super.onCleared()
-        disconnect()
+        // Don't call disconnect() - see comment above
+        android.util.Log.d("ReverbVM", "ReverbVM cleared (no disconnect)")
     }
 }

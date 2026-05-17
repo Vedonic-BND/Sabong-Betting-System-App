@@ -84,7 +84,7 @@ fun CashOutScreen(
         viewModel.loadBetHistory(context)
         viewModel.loadTellerCashStatus(context)
         viewModel.loadRunnerHistory(context)
-        reverbViewModel.connect()
+        reverbViewModel.connect(context)
     }
 
     // Load system settings

@@ -18,6 +18,7 @@ class UserStore(private val context: Context) {
         val NAME          = stringPreferencesKey("name")
         val ROLE          = stringPreferencesKey("role")
         val APP           = stringPreferencesKey("app")
+        val USER_ID       = stringPreferencesKey("user_id")
     }
 
     val token        : Flow<String?> = context.dataStore.data.map { it[TOKEN] }
@@ -26,29 +27,33 @@ class UserStore(private val context: Context) {
     val name         : Flow<String?> = context.dataStore.data.map { it[NAME] }
     val role         : Flow<String?> = context.dataStore.data.map { it[ROLE] }
     val app          : Flow<String?> = context.dataStore.data.map { it[APP] }
+    val userId       : Flow<String?> = context.dataStore.data.map { it[USER_ID] }
 
-    suspend fun saveAdmin(token: String, name: String) {
+    suspend fun saveAdmin(token: String, name: String, userId: Int) {
         context.dataStore.edit {
-            it[TOKEN]  = token
-            it[NAME]   = name
-            it[ROLE]   = "admin"
-            it[APP]    = "admin"
+            it[TOKEN]   = token
+            it[NAME]    = name
+            it[ROLE]    = "admin"
+            it[APP]     = "admin"
+            it[USER_ID] = userId.toString()
         }
     }
 
-    suspend fun saveRunner(token: String, name: String) {
+    suspend fun saveRunner(token: String, name: String, userId: Int) {
         context.dataStore.edit {
-            it[TOKEN]  = token
-            it[NAME]   = name
-            it[ROLE]   = "runner"
-            it[APP]    = "runner"
+            it[TOKEN]   = token
+            it[NAME]    = name
+            it[ROLE]    = "runner"
+            it[APP]     = "runner"
+            it[USER_ID] = userId.toString()
         }
     }
 
     suspend fun saveTeller(
         cashInToken: String,
         cashOutToken: String,
-        name: String
+        name: String,
+        userId: Int
     ) {
         context.dataStore.edit {
             // For new system: both cashInToken and cashOutToken are the same
@@ -59,6 +64,7 @@ class UserStore(private val context: Context) {
             it[NAME]          = name
             it[ROLE]          = "teller"
             it[APP]           = ""  // not selected yet
+            it[USER_ID]       = userId.toString()
         }
     }
 

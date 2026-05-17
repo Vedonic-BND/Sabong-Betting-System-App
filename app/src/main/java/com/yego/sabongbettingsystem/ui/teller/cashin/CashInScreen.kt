@@ -50,6 +50,7 @@ fun CashInScreen(
     val context   = LocalContext.current
     val userStore = remember { UserStore(context) }
     val name      by userStore.name.collectAsState(initial = "Teller")
+    val userId    by userStore.userId.collectAsState(initial = "")
     val fight     by cashInViewModel.currentFight.collectAsState()
     val isLoading by cashInViewModel.isLoading.collectAsState()
     val error     by cashInViewModel.error.collectAsState()
@@ -81,7 +82,10 @@ fun CashInScreen(
         cashInViewModel.loadTellerCashStatus(context)
         cashInViewModel.loadSavedNotifications(context)
         cashOutViewModel.loadBetHistory(context)
-        reverbViewModel.connect()
+        // Connect with user ID for filtering notifications
+        val userIdLong = userId?.toLongOrNull() ?: -1
+        android.util.Log.d("CashInScreen", "Connecting ReverbVM with userId='$userId' → parsed as: $userIdLong")
+        reverbViewModel.connect(context, userIdLong)
     }
 
     // Refresh data when teller cash is updated via Reverb (runner transaction)
@@ -108,9 +112,27 @@ fun CashInScreen(
         }
     }
 
+    // Show notification when owner assigns a runner
+    LaunchedEffect(notifications) {
+        val runnerAssignedNotif = notifications.find { 
+            it.title == "Runner Assigned" && !it.isRead 
+        }
+        if (runnerAssignedNotif != null) {
+            acceptedRunnerName = runnerAssignedNotif.message
+            showRunnerNotification = true
+            // Pass context to sync read status to database
+            cashInViewModel.markNotificationAsRead(runnerAssignedNotif.id, context)
+            
+            // Auto-dismiss after 3 seconds
+            delay(3000)
+            showRunnerNotification = false
+        }
+    }
+
     // Show notification when a runner accepts the request
     LaunchedEffect(runnerAccepted) {
         if (runnerAccepted != null) {
+            android.util.Log.d("CashInScreen", "🎉 RunnerAccepted popup triggered!")
             val runnerName = runnerAccepted!!.optString("runner_name", "A runner")
             acceptedRunnerName = runnerName
             showRunnerNotification = true
@@ -219,7 +241,7 @@ fun CashInScreen(
             NotificationSheetContent(
                 notifications = notifications,
                 onClear = { cashInViewModel.clearNotifications() },
-                onMarkAsRead = { cashInViewModel.markNotificationAsRead(it) }
+                onMarkAsRead = { cashInViewModel.markNotificationAsRead(it, context) }
             )
         }
     }
