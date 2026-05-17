@@ -30,12 +30,14 @@ fun AdminCreateFightScreen(navController: NavController) {
 
     var showResetDialog by remember { mutableStateOf(false) }
 
-    // calculate next fight number: get last fight number and add 1
-    // if no fights exist (after reset), it will be 0 + 1 = 1
+    // calculate next fight number: get last ACTIVE fight number and add 1
+    // if no active fights exist (after reset), it will be 0 + 1 = 1
+    // NOTE: Only count fights from the current session (session_date = null in backend)
+    // After reset, all previous fights get archived to a session date, so counter restarts at 1
     val nextFightNumber = remember(history, currentFight) {
         val allNumbers = mutableListOf<Int>()
         
-        // Get all fight numbers from history
+        // Get all fight numbers from history (only non-session fights = current session)
         history.mapNotNullTo(allNumbers) { it.fight_number.toIntOrNull() }
         
         // Also check current fight if it exists
