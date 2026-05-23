@@ -58,6 +58,10 @@ data class DeclareWinnerRequest(
     val winner: String
 )
 
+data class ReannounceWinnerRequest(
+    val winner: String
+)
+
 data class PlaceBetRequest(
     val side: String,
     val amount: Double

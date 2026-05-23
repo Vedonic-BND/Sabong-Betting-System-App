@@ -167,11 +167,26 @@ class ReverbViewModel : ViewModel() {
 
         ReverbManager.onWinnerDeclared = { data ->
             viewModelScope.launch(Dispatchers.Main) {
-                val current = _fightState.value
-                _fightState.value = current?.copy(
-                    status = "done",
-                    winner = data.optString("winner"),
-                )
+                try {
+                    val current = _fightState.value
+                    val fightNumber = data.optString("fight_number", "") ?: ""
+                    val currentFightNumber = current?.fightNumber ?: ""
+                    
+                    if (fightNumber == currentFightNumber && fightNumber.isNotEmpty()) {
+                        _fightState.value = current?.copy(
+                            status = "done",
+                            winner = data.optString("winner") ?: "",
+                        )
+                        android.util.Log.d("ReverbVM", "✅ Current fight #$fightNumber winner declared")
+                    } else {
+                        android.util.Log.d("ReverbVM", "📢 Reannouncement detected: fight #$fightNumber != current #$currentFightNumber")
+                        _fightState.value = current?.copy(
+                            winner = data.optString("winner") ?: "",
+                        )
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ReverbVM", "Error in onWinnerDeclared: ${e.message}")
+                }
             }
         }
 

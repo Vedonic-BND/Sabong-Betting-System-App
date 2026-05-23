@@ -7,6 +7,7 @@ import com.yego.sabongbettingsystem.data.api.RetrofitClient
 import com.yego.sabongbettingsystem.data.model.CreateFightRequest
 import com.yego.sabongbettingsystem.data.model.DeclareWinnerRequest
 import com.yego.sabongbettingsystem.data.model.Fight
+import com.yego.sabongbettingsystem.data.model.ReannounceWinnerRequest
 import com.yego.sabongbettingsystem.data.model.UpdateSideStatusRequest
 import com.yego.sabongbettingsystem.data.model.UpdateStatusRequest
 import com.yego.sabongbettingsystem.data.model.UpdateAllSideStatusRequest
@@ -55,6 +56,30 @@ class AdminViewModel : ViewModel() {
                     _currentFight.value = response.body()
                 } else if (response.code() == 404) {
                     _currentFight.value = null
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _error.value = "Error ${response.code()}: $errorBody"
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // ── Load fight by ID ──────────────────────────────────
+
+    fun loadFightById(context: Context, fightId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val response = RetrofitClient.api.getFightById(bearerToken(context), fightId)
+                if (response.isSuccessful) {
+                    _currentFight.value = response.body()
+                } else if (response.code() == 404) {
+                    _error.value = "Fight not found."
                 } else {
                     val errorBody = response.errorBody()?.string()
                     _error.value = "Error ${response.code()}: $errorBody"
@@ -266,6 +291,39 @@ class AdminViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = "Cannot connect to server."
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // ── Reannounce winner ─────────────────────────────────
+
+    fun reannounceWinner(context: Context, fightId: Int, winner: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val response = RetrofitClient.api.reannounceWinner(
+                    bearerToken(context),
+                    fightId,
+                    ReannounceWinnerRequest(winner)
+                )
+                if (response.isSuccessful) {
+                    _actionResult.value = "winner_reannounced"
+                    // Refresh fight history to show updated state
+                    loadFightHistory(context)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    val message = try {
+                        org.json.JSONObject(errorBody ?: "").getString("message")
+                    } catch (e: Exception) {
+                        "Error ${response.code()}: $errorBody"
+                    }
+                    _error.value = message
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect to server: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

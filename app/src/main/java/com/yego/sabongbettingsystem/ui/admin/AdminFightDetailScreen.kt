@@ -30,14 +30,16 @@ fun AdminFightDetailScreen(
     val actionResult by viewModel.actionResult.collectAsState()
 
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var showReannounceDialog by remember { mutableStateOf(false) }
     var pendingWinner     by remember { mutableStateOf("") }
+    var pendingReannounceWinner by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        viewModel.loadCurrentFight(context)
+        viewModel.loadFightById(context, fightId)
     }
 
     LaunchedEffect(actionResult) {
-        if (actionResult == "winner_declared") {
+        if (actionResult == "winner_declared" || actionResult == "winner_reannounced") {
             viewModel.clearResult()
             navController.popBackStack()
         }
@@ -60,6 +62,29 @@ fun AdminFightDetailScreen(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showConfirmDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showReannounceDialog) {
+        AlertDialog(
+            onDismissRequest = { showReannounceDialog = false },
+            title   = { Text("Reannounce Winner") },
+            text    = {
+                Text("Change winner to ${pendingReannounceWinner.uppercase()}? All payouts will be recalculated.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showReannounceDialog = false
+                        viewModel.reannounceWinner(context, fightId, pendingReannounceWinner)
+                    }
+                ) { Text("Confirm") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showReannounceDialog = false }) {
                     Text("Cancel")
                 }
             }
@@ -130,72 +155,171 @@ fun AdminFightDetailScreen(
                     )
                 }
 
-                Text(
-                    text  = "Declare Winner",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                // Show different UI based on fight status
+                if (fight!!.status == "done") {
+                    // Fight is completed - show reannounce option
+                    Text(
+                        text  = "Reannounce Winner",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
 
-                // winner buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            pendingWinner     = "meron"
-                            showConfirmDialog = true
-                        },
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                        colors   = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        ),
-                        enabled = !isLoading
-                    ) {
-                        Text("MERON WINS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    // Current winner display
+                    if (fight!!.winner != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val currentWinner = fight!!.winner
+                                Text(
+                                    text = "Current Winner: ${currentWinner?.uppercase() ?: "-"}",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
                     }
 
-                    Button(
-                        onClick = {
-                            pendingWinner     = "wala"
-                            showConfirmDialog = true
-                        },
-                        modifier = Modifier.weight(1f).height(56.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                        colors   = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ),
-                        enabled = !isLoading
+                    // reannounce buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("WALA WINS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Button(
+                            onClick = {
+                                pendingReannounceWinner = "meron"
+                                showReannounceDialog = true
+                            },
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            shape    = RoundedCornerShape(12.dp),
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            enabled = !isLoading
+                        ) {
+                            Text("MERON WINS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                pendingReannounceWinner = "wala"
+                                showReannounceDialog = true
+                            },
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            shape    = RoundedCornerShape(12.dp),
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            enabled = !isLoading
+                        ) {
+                            Text("WALA WINS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
                     }
-                }
 
-                // draw / cancel
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            pendingWinner     = "draw"
-                            showConfirmDialog = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape    = RoundedCornerShape(12.dp),
-                        enabled  = !isLoading
-                    ) { Text("Draw") }
+                    // draw / cancel options for reannounce
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                pendingReannounceWinner = "draw"
+                                showReannounceDialog = true
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(12.dp),
+                            enabled  = !isLoading
+                        ) { Text("Draw") }
 
-                    OutlinedButton(
-                        onClick = {
-                            pendingWinner     = "cancelled"
-                            showConfirmDialog = true
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape    = RoundedCornerShape(12.dp),
-                        enabled  = !isLoading
-                    ) { Text("Cancel Fight") }
+                        OutlinedButton(
+                            onClick = {
+                                pendingReannounceWinner = "cancelled"
+                                showReannounceDialog = true
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(12.dp),
+                            enabled  = !isLoading
+                        ) { Text("Cancelled") }
+                    }
+                } else {
+                    // Fight is not completed - show declare winner options
+                    Text(
+                        text  = "Declare Winner",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // winner buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                pendingWinner     = "meron"
+                                showConfirmDialog = true
+                            },
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            shape    = RoundedCornerShape(12.dp),
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            enabled = !isLoading
+                        ) {
+                            Text("MERON WINS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                pendingWinner     = "wala"
+                                showConfirmDialog = true
+                            },
+                            modifier = Modifier.weight(1f).height(56.dp),
+                            shape    = RoundedCornerShape(12.dp),
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            ),
+                            enabled = !isLoading
+                        ) {
+                            Text("WALA WINS", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+
+                    // draw / cancel
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                pendingWinner     = "draw"
+                                showConfirmDialog = true
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(12.dp),
+                            enabled  = !isLoading
+                        ) { Text("Draw") }
+
+                        OutlinedButton(
+                            onClick = {
+                                pendingWinner     = "cancelled"
+                                showConfirmDialog = true
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(12.dp),
+                            enabled  = !isLoading
+                        ) { Text("Cancel Fight") }
+                    }
                 }
             }
         }

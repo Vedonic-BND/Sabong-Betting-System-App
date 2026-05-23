@@ -1,5 +1,6 @@
 package com.yego.sabongbettingsystem.ui.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -62,7 +63,12 @@ fun AdminFightHistoryScreen(navController: NavController) {
                     contentPadding      = PaddingValues(vertical = 12.dp)
                 ) {
                     items(history) { fight ->
-                        FightHistoryItem(fight = fight)
+                        FightHistoryItem(
+                            fight = fight,
+                            onClick = {
+                                navController.navigate("admin_fight/${fight.id}")
+                            }
+                        )
                     }
                 }
             }
@@ -71,9 +77,11 @@ fun AdminFightHistoryScreen(navController: NavController) {
 }
 
 @Composable
-fun FightHistoryItem(fight: Fight) {
+fun FightHistoryItem(fight: Fight, onClick: () -> Unit = {}) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape    = RoundedCornerShape(12.dp)
     ) {
         Row(

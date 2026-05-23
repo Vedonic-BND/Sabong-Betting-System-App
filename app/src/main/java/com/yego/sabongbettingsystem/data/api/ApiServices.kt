@@ -17,6 +17,12 @@ interface ApiService {
     @GET("fight/current")
     suspend fun getCurrentFight(@Header("Authorization") token: String): Response<Fight>
 
+    @GET("fight/{id}")
+    suspend fun getFightById(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<Fight>
+
     @GET("fight/history")
     suspend fun getFightHistory(@Header("Authorization") token: String): Response<List<Fight>>
 
@@ -63,6 +69,13 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") id: Int,
         @Body request: DeclareWinnerRequest
+    ): Response<MessageResponse>
+
+    @POST("fight/{id}/reannounce-winner")
+    suspend fun reannounceWinner(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body request: ReannounceWinnerRequest
     ): Response<MessageResponse>
 
     // ── Bets ─────────────────────────────────────────────
