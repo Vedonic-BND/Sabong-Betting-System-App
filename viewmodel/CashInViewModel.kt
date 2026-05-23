@@ -31,6 +31,9 @@ class CashInViewModel : ViewModel() {
     private val _betHistory = MutableStateFlow<List<BetResponse>>(emptyList())
     val betHistory: StateFlow<List<BetResponse>> = _betHistory
 
+    private val _adminBetHistory = MutableStateFlow<List<BetResponse>>(emptyList())
+    val adminBetHistory: StateFlow<List<BetResponse>> = _adminBetHistory
+
     private val _requestSuccess = MutableStateFlow(false)
     val requestSuccess: StateFlow<Boolean> = _requestSuccess
 
@@ -186,6 +189,49 @@ class CashInViewModel : ViewModel() {
                 
                 if (response.isSuccessful) {
                     _requestSuccess.value = true
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _error.value = "Error ${response.code()}: $errorBody"
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // ── Admin Bet Management ──────────────────────────────
+
+    fun loadAdminBetHistory(context: Context) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val response = RetrofitClient.api.getAdminBetHistory(bearerToken(context))
+                if (response.isSuccessful) {
+                    _adminBetHistory.value = response.body()?.data ?: emptyList()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _error.value = "Error ${response.code()}: $errorBody"
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun deleteAdminBet(context: Context, betId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val response = RetrofitClient.api.deleteAdminBet(bearerToken(context), betId)
+                if (response.isSuccessful) {
+                    // Refresh the history after deletion
+                    loadAdminBetHistory(context)
                 } else {
                     val errorBody = response.errorBody()?.string()
                     _error.value = "Error ${response.code()}: $errorBody"

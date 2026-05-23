@@ -43,8 +43,14 @@ class CashInViewModel : ViewModel() {
     private val _betResult = MutableStateFlow<BetResponse?>(null)
     val betResult: StateFlow<BetResponse?> = _betResult
 
+    private val _betDeleted = MutableStateFlow<Int?>(null)
+    val betDeleted: StateFlow<Int?> = _betDeleted
+
     private val _betHistory = MutableStateFlow<List<BetResponse>>(emptyList())
     val betHistory: StateFlow<List<BetResponse>> = _betHistory
+
+    private val _adminBetHistory = MutableStateFlow<List<BetResponse>>(emptyList())
+    val adminBetHistory: StateFlow<List<BetResponse>> = _adminBetHistory
 
     private val _runnerHistory = MutableStateFlow<List<RunnerTransactionResponse>>(emptyList())
     val runnerHistory: StateFlow<List<RunnerTransactionResponse>> = _runnerHistory
@@ -73,6 +79,7 @@ class CashInViewModel : ViewModel() {
     fun clearResult() { _betResult.value = null }
     fun clearError()  { _error.value = null }
     fun clearRequestSuccess() { _requestSuccess.value = false }
+    fun clearBetDeleted() { _betDeleted.value = null }
 
     fun addNotification(title: String, message: String, data: JSONObject? = null, context: android.content.Context? = null) {
         val sdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
@@ -181,12 +188,23 @@ class CashInViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value     = null
+            android.util.Log.d("CashInVM", "📥 loadCurrentFight() START")
             try {
                 val response = RetrofitClient.api.getCurrentFight(bearerToken(context))
+                android.util.Log.d("CashInVM", "API Response Code: ${response.code()}, isSuccessful: ${response.isSuccessful}")
+                
                 if (response.isSuccessful) {
-                    _currentFight.value = response.body()
+                    val fight = response.body()
+                    if (fight != null) {
+                        _currentFight.value = fight
+                        android.util.Log.d("CashInVM", "✅ loadCurrentFight() SUCCESS - fight: ${fight.fight_number}, meron: ${fight.meron_total}, wala: ${fight.wala_total}")
+                    } else {
+                        android.util.Log.d("CashInVM", "❌ loadCurrentFight() - Response body is NULL!")
+                        _error.value = "Fight data is null"
+                    }
                 } else if (response.code() == 404) {
                     _currentFight.value = null
+                    android.util.Log.d("CashInVM", "✅ loadCurrentFight() 404 - No active fight")
                 } else {
                     val errorMessage = try {
                         val errorBody = response.errorBody()?.string() ?: ""
@@ -199,11 +217,14 @@ class CashInViewModel : ViewModel() {
                         "Error ${response.code()}"
                     }
                     _error.value = errorMessage
+                    android.util.Log.d("CashInVM", "❌ loadCurrentFight() FAILED: $errorMessage")
                 }
             } catch (e: Exception) {
                 _error.value = "Cannot connect: ${e.message ?: "Unable to reach server"}"
+                android.util.Log.d("CashInVM", "❌ loadCurrentFight() EXCEPTION: ${e.message}", e)
             } finally {
                 _isLoading.value = false
+                android.util.Log.d("CashInVM", "📤 loadCurrentFight() END")
             }
         }
     }
@@ -458,6 +479,80 @@ class CashInViewModel : ViewModel() {
 
     fun stopAutoRefresh() {
         refreshJob?.cancel()
+    }
+
+    // ── Admin Bet Management ──────────────────────────────
+
+    fun loadAdminBetHistory(context: Context) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            android.util.Log.d("CashInVM", "📥 loadAdminBetHistory() START")
+            try {
+                val response = RetrofitClient.api.getAdminBetHistory(bearerToken(context))
+                if (response.isSuccessful) {
+                    val data = response.body()?.data ?: emptyList()
+                    _adminBetHistory.value = data
+                    android.util.Log.d("CashInVM", "✅ loadAdminBetHistory() SUCCESS - loaded ${data.size} bets")
+                } else {
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Error ${response.code()}"
+                    }
+                    _error.value = errorMessage
+                    android.util.Log.d("CashInVM", "❌ loadAdminBetHistory() FAILED: $errorMessage")
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message ?: "Unable to reach server"}"
+                android.util.Log.d("CashInVM", "❌ loadAdminBetHistory() EXCEPTION: ${e.message}")
+            } finally {
+                _isLoading.value = false
+                android.util.Log.d("CashInVM", "📤 loadAdminBetHistory() END")
+            }
+        }
+    }
+
+    fun deleteAdminBet(context: Context, betId: Int, reverbViewModel: ReverbViewModel? = null) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val response = RetrofitClient.api.deleteAdminBet(bearerToken(context), betId)
+                if (response.isSuccessful) {
+                    android.util.Log.d("CashInVM", "✅ Bet deletion successful (API returned success)")
+                    
+                    // Signal deletion event with the bet ID
+                    _betDeleted.value = betId
+                    
+                    // Log the signal
+                    android.util.Log.d("CashInVM", "🎯 Deletion event triggered with betId: $betId")
+                } else {
+                    val errorMessage = try {
+                        val errorBody = response.errorBody()?.string() ?: ""
+                        if (errorBody.isNotBlank()) {
+                            org.json.JSONObject(errorBody).optString("message", errorBody)
+                        } else {
+                            "Error ${response.code()}"
+                        }
+                    } catch (e: Exception) {
+                        "Error ${response.code()}"
+                    }
+                    _error.value = errorMessage
+                    android.util.Log.d("CashInVM", "❌ Deletion failed: $errorMessage")
+                }
+            } catch (e: Exception) {
+                _error.value = "Cannot connect: ${e.message ?: "Unable to reach server"}"
+                android.util.Log.d("CashInVM", "❌ Deletion exception: ${e.message}")
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     override fun onCleared() {

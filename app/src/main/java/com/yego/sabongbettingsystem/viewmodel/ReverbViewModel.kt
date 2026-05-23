@@ -33,6 +33,9 @@ class ReverbViewModel : ViewModel() {
     private val _lastBet     = MutableStateFlow<JSONObject?>(null)
     val lastBet: StateFlow<JSONObject?> = _lastBet
 
+    private val _betDeleted  = MutableStateFlow<JSONObject?>(null)
+    val betDeleted: StateFlow<JSONObject?> = _betDeleted
+
     private val _cashUpdated = MutableStateFlow<JSONObject?>(null)
     val cashUpdated: StateFlow<JSONObject?> = _cashUpdated
 
@@ -48,6 +51,7 @@ class ReverbViewModel : ViewModel() {
     fun resetState() {
         _fightState.value = null
         _lastBet.value = null
+        _betDeleted.value = null
         _runnerAccepted.value = null
         _runnerDeclined.value = null
     }
@@ -58,6 +62,14 @@ class ReverbViewModel : ViewModel() {
 
     fun clearRunnerDeclined() {
         _runnerDeclined.value = null
+    }
+
+    fun setBetDeleted(data: JSONObject?) {
+        _betDeleted.value = data
+    }
+
+    fun clearBetDeleted() {
+        _betDeleted.value = null
     }
 
     fun connect(context: Any? = null, userId: Long = -1) {
@@ -130,6 +142,26 @@ class ReverbViewModel : ViewModel() {
                     walaTotal   = data.optDouble("wala_total", current?.walaTotal ?: 0.0),
                 )
                 _lastBet.value = data
+            }
+        }
+
+        ReverbManager.onBetDeleted = { data ->
+            viewModelScope.launch(Dispatchers.Main) {
+                android.util.Log.d("ReverbVM", "🎯 onBetDeleted received: $data")
+                val current = _fightState.value
+                // When a bet is deleted, update the fight totals
+                _fightState.value = ReverbFightState(
+                    fightNumber = data.optString("fight_number", current?.fightNumber ?: ""),
+                    status      = data.optString("status", current?.status ?: ""),
+                    meronStatus = data.optString("meron_status", current?.meronStatus ?: "open"),
+                    walaStatus  = data.optString("wala_status", current?.walaStatus ?: "open"),
+                    winner      = data.optString("winner", current?.winner),
+                    meronTotal  = data.optDouble("meron_total", current?.meronTotal ?: 0.0),
+                    walaTotal   = data.optDouble("wala_total", current?.walaTotal ?: 0.0),
+                )
+                // Also trigger the betDeleted event so UI can refresh
+                _betDeleted.value = data
+                android.util.Log.d("ReverbVM", "✅ betDeleted event triggered and state updated")
             }
         }
 

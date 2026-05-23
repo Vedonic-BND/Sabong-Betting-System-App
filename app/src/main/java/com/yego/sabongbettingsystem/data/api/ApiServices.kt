@@ -89,6 +89,18 @@ interface ApiService {
         @Path("reference") reference: String
     ): Response<BetResponse>
 
+    // ── Admin Bet Management ──────────────────────────
+    @GET("admin/bet/history")
+    suspend fun getAdminBetHistory(
+        @Header("Authorization") token: String
+    ): Response<BetHistoryResponse>
+
+    @DELETE("admin/bet/{id}")
+    suspend fun deleteAdminBet(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Response<MessageResponse>
+
     // ── Payout ───────────────────────────────────────────
     @GET("payout/{reference}")
     suspend fun getPayout(

@@ -22,6 +22,7 @@ object ReverbManager {
 
     var onFightUpdated         : ((JSONObject) -> Unit)? = null
     var onBetPlaced            : ((JSONObject) -> Unit)? = null
+    var onBetDeleted           : ((JSONObject) -> Unit)? = null
     var onWinnerDeclared       : ((JSONObject) -> Unit)? = null
     var onTellerCashUpdated    : ((JSONObject) -> Unit)? = null
     var onCashRequested        : ((JSONObject) -> Unit)? = null
@@ -116,6 +117,20 @@ object ReverbManager {
                 val raw     = JSONObject(event.data)
                 val payload = if (raw.has("data")) raw.getJSONObject("data") else raw
                 onBetPlaced?.invoke(payload)
+            } catch (e: Exception) {
+                android.util.Log.e("Reverb", "Parse error: ${e.message}")
+            }
+        }
+
+        channel!!.bind("bet.deleted") { event ->
+            android.util.Log.d("Reverb", "🎯 bet.deleted EVENT RECEIVED: ${event.data}")
+            try {
+                val raw     = JSONObject(event.data)
+                val payload = if (raw.has("data")) raw.getJSONObject("data") else raw
+                android.util.Log.d("Reverb", "🎯 Parsed payload: $payload")
+                android.util.Log.d("Reverb", "🎯 Callback status: onBetDeleted = ${if (onBetDeleted == null) "NULL ❌" else "SET ✅"}")
+                onBetDeleted?.invoke(payload)
+                android.util.Log.d("Reverb", "✅ onBetDeleted callback invoked")
             } catch (e: Exception) {
                 android.util.Log.e("Reverb", "Parse error: ${e.message}")
             }
