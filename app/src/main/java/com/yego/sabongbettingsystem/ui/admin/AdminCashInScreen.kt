@@ -1,5 +1,6 @@
 package com.yego.sabongbettingsystem.ui.admin
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,9 +60,6 @@ fun AdminCashInScreen(
     var selectedSide by remember { mutableStateOf("") }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
-    var showConfirmDialog by remember { mutableStateOf(false) }
-    var pendingBetAmount by remember { mutableStateOf(0.0) }
-
     // Derive statuses safely from both Reverb and API
     val meronOpen = reverbFight?.meronStatus?.let { it == "open" } ?: (fight?.meron_status == "open")
     val walaOpen = reverbFight?.walaStatus?.let { it == "open" } ?: (fight?.wala_status == "open")
@@ -112,52 +110,6 @@ fun AdminCashInScreen(
     LaunchedEffect(fight?.fight_number) {
         amount = ""
         selectedSide = ""
-    }
-
-    // Navigation on success
-    LaunchedEffect(betResult) {
-        betResult?.let {
-            navController.navigate("admin_receipt/${it.reference}")
-        }
-    }
-
-    if (showConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Confirm Bet") },
-            text = {
-                Column {
-                    Text("Are you sure you want to place this bet?")
-                    Spacer(Modifier.height(8.dp))
-                    Row {
-                        Text("Side: ", fontWeight = FontWeight.Bold)
-                        Text(selectedSide.uppercase(), color = if (selectedSide == "meron") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-                    }
-                    Row {
-                        Text("Amount: ", fontWeight = FontWeight.Bold)
-                        Text("₱$amount", color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showConfirmDialog = false
-                        val amt = amount.toDoubleOrNull()
-                        if (amt != null && selectedSide.isNotEmpty()) {
-                            cashInViewModel.placeBet(context, selectedSide, amt)
-                        }
-                    }
-                ) {
-                    Text("Confirm")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 
     Scaffold(
@@ -237,8 +189,9 @@ fun AdminCashInScreen(
                                         walaOpen = walaOpen,
                                         isLoading = isLoading,
                                         onPlaceBet = { amt ->
-                                            pendingBetAmount = amt
-                                            showConfirmDialog = true
+                                            if (selectedSide.isNotEmpty()) {
+                                                cashInViewModel.placeBet(context, selectedSide, amt)
+                                            }
                                         }
                                     )
                                 } else if (fight != null && statusDisplay != "open") {
@@ -266,8 +219,9 @@ fun AdminCashInScreen(
                                     walaOpen = walaOpen,
                                     isLoading = isLoading,
                                     onPlaceBet = { amt ->
-                                        pendingBetAmount = amt
-                                        showConfirmDialog = true
+                                        if (selectedSide.isNotEmpty()) {
+                                            cashInViewModel.placeBet(context, selectedSide, amt)
+                                        }
                                     }
                                 )
                             } else if (fight != null && statusDisplay != "open") {
@@ -282,6 +236,9 @@ fun AdminCashInScreen(
                         isLoading = isLoading,
                         onDeleteBet = { betId ->
                             cashInViewModel.deleteAdminBet(context, betId, reverbViewModel)
+                        },
+                        onBetClicked = { reference ->
+                            navController.navigate("admin_receipt/$reference")
                         }
                     )
                 }
@@ -528,7 +485,8 @@ fun BettingClosedMessage(status: String) {
 fun AdminBetHistoryView(
     history: List<com.yego.sabongbettingsystem.data.model.BetResponse>,
     isLoading: Boolean,
-    onDeleteBet: (Int) -> Unit
+    onDeleteBet: (Int) -> Unit,
+    onBetClicked: (String) -> Unit
 ) {
     var deletingBetId by remember { mutableStateOf<Int?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -577,7 +535,9 @@ fun AdminBetHistoryView(
             ) {
                 items(history) { bet ->
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onBetClicked(bet.reference) },
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(

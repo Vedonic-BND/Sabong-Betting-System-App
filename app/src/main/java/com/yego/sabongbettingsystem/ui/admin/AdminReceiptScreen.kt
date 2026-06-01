@@ -37,6 +37,7 @@ fun AdminReceiptScreen(
 ) {
     val context      = LocalContext.current
     val betResult    by cashInViewModel.betResult.collectAsState()
+    val adminBetHistory by cashInViewModel.adminBetHistory.collectAsState()
     val printerStore = remember { PrinterStore(context) }
     val printerAddress by printerStore.printerAddress.collectAsState(initial = null)
     
@@ -45,12 +46,30 @@ fun AdminReceiptScreen(
     var isPrinting   by remember { mutableStateOf(false) }
     var printSuccess by remember { mutableStateOf(false) }
     var printError   by remember { mutableStateOf<String?>(null) }
+    
+    // Find the bet from history based on reference parameter
+    val currentBet by remember(reference, adminBetHistory, betResult) {
+        derivedStateOf {
+            // First, check if betResult matches the reference (for newly placed bets)
+            if (betResult?.reference == reference) {
+                betResult
+            } else {
+                // Otherwise, find it from the admin bet history
+                adminBetHistory.find { it.reference == reference }
+            }
+        }
+    }
 
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         if (permissions.values.all { it }) isPrinting = true
         else printError = "Bluetooth permission denied."
+    }
+
+    // Load admin bet history on mount to ensure data is available
+    LaunchedEffect(Unit) {
+        cashInViewModel.loadAdminBetHistory(context)
     }
 
     // Load system settings
@@ -66,10 +85,10 @@ fun AdminReceiptScreen(
     }
 
     LaunchedEffect(isPrinting) {
-        if (isPrinting && betResult != null) {
+        if (isPrinting && currentBet != null) {
             val ctx    = context
             val addr   = printerAddress
-            val r      = betResult!!.receipt
+            val r      = currentBet!!.receipt
             val error  = kotlinx.coroutines.withContext(
                 kotlinx.coroutines.Dispatchers.IO
             ) {
@@ -107,7 +126,7 @@ fun AdminReceiptScreen(
             )
         }
     ) { padding ->
-        if (betResult == null) {
+        if (currentBet == null) {
             Box(
                 modifier         = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
@@ -118,10 +137,10 @@ fun AdminReceiptScreen(
                 )
             }
         } else {
-            val receipt    = betResult!!.receipt
+            val receipt    = currentBet!!.receipt
             // Generate QR Bitmap OFFLINE
-            val qrBitmap = remember(betResult!!.reference) {
-                QrGenerator.generateQrCode(betResult!!.reference, 512)
+            val qrBitmap = remember(currentBet!!.reference) {
+                QrGenerator.generateQrCode(currentBet!!.reference, 512)
             }
 
             Column(
