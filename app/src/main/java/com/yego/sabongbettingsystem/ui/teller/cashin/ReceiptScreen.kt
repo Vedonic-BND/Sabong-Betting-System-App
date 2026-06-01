@@ -50,6 +50,7 @@ fun ReceiptScreen(
     var isPrinting   by remember { mutableStateOf(false) }
     var printSuccess by remember { mutableStateOf(false) }
     var printError   by remember { mutableStateOf<String?>(null) }
+    var hasPrinted   by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -58,17 +59,9 @@ fun ReceiptScreen(
         else printError = "Bluetooth permission denied."
     }
 
-    // Auto-print on mount
+    // Initialize on mount - load settings and request permissions
     LaunchedEffect(Unit) {
-        if (BluetoothPermissionHelper.hasPermissions(context)) {
-            isPrinting = true
-        } else {
-            permissionLauncher.launch(BluetoothPermissionHelper.requiredPermissions())
-        }
-    }
-
-    // Load system settings
-    LaunchedEffect(Unit) {
+        // Load system settings
         try {
             val response = com.yego.sabongbettingsystem.data.api.RetrofitClient.api.getSystemSettings()
             if (response.isSuccessful) {
@@ -78,6 +71,16 @@ fun ReceiptScreen(
             // Use default title on error
         } finally {
             loadingSettings = false
+        }
+
+        // Auto-print on mount (only once)
+        if (!hasPrinted) {
+            hasPrinted = true
+            if (BluetoothPermissionHelper.hasPermissions(context)) {
+                isPrinting = true
+            } else {
+                permissionLauncher.launch(BluetoothPermissionHelper.requiredPermissions())
+            }
         }
     }
 
@@ -91,19 +94,23 @@ fun ReceiptScreen(
             val error  = kotlinx.coroutines.withContext(
                 kotlinx.coroutines.Dispatchers.IO
             ) {
-                BluetoothPrinterService.printReceipt(
-                    context        = ctx,
-                    fightNumber    = r.fight_number ?: "",
-                    side           = r.side ?: "",
-                    amount         = r.amount ?: "",
-                    reference      = r.reference ?: "",
-                    teller         = tellerToPrint,
-                    date           = r.date ?: "",
-                    time           = r.time ?: "",
-                    qrData         = betResult!!.reference,
-                    printerAddress = addr,
-                    systemTitle    = systemTitle
-                )
+                try {
+                    BluetoothPrinterService.printReceipt(
+                        context        = ctx,
+                        fightNumber    = r.fight_number ?: "",
+                        side           = r.side ?: "",
+                        amount         = r.amount ?: "",
+                        reference      = r.reference ?: "",
+                        teller         = tellerToPrint,
+                        date           = r.date ?: "",
+                        time           = r.time ?: "",
+                        qrData         = betResult!!.reference,
+                        printerAddress = addr,
+                        systemTitle    = systemTitle
+                    )
+                } catch (e: Exception) {
+                    e.message ?: "Printing failed unexpectedly."
+                }
             }
             isPrinting   = false
             printSuccess = error == null

@@ -61,6 +61,7 @@ fun CashOutScreen(
     var isPrinting   by remember { mutableStateOf(false) }
     var printError   by remember { mutableStateOf<String?>(null) }
     var printSuccess by remember { mutableStateOf(false) }
+    var hasPrinted   by remember { mutableStateOf(false) }
 
     var systemTitle by remember { mutableStateOf("SABONG BETTING SYSTEM") }
 
@@ -80,15 +81,14 @@ fun CashOutScreen(
         }
     }
 
+    // Initialize on mount - load data and settings
     LaunchedEffect(Unit) {
         viewModel.loadBetHistory(context)
         viewModel.loadTellerCashStatus(context)
         viewModel.loadRunnerHistory(context)
         reverbViewModel.connect(context)
-    }
 
-    // Load system settings
-    LaunchedEffect(Unit) {
+        // Load system settings
         try {
             val response = com.yego.sabongbettingsystem.data.api.RetrofitClient.api.getSystemSettings()
             if (response.isSuccessful) {
