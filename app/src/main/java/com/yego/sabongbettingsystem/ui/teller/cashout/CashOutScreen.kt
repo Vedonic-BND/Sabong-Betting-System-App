@@ -150,6 +150,10 @@ fun CashOutScreen(
         if (confirmed) {
             viewModel.loadBetHistory(context)
             viewModel.loadTellerCashStatus(context)
+            // Auto-print after confirmation
+            if (BluetoothPermissionHelper.hasPermissions(context)) {
+                isPrinting = true
+            }
         }
     }
 

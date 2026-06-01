@@ -58,6 +58,15 @@ fun ReceiptScreen(
         else printError = "Bluetooth permission denied."
     }
 
+    // Auto-print on mount
+    LaunchedEffect(Unit) {
+        if (BluetoothPermissionHelper.hasPermissions(context)) {
+            isPrinting = true
+        } else {
+            permissionLauncher.launch(BluetoothPermissionHelper.requiredPermissions())
+        }
+    }
+
     // Load system settings
     LaunchedEffect(Unit) {
         try {
