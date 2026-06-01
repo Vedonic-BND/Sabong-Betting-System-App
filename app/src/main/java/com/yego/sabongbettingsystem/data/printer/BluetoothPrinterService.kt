@@ -66,49 +66,48 @@ object BluetoothPrinterService {
         printerAddress: String? = null,
         systemTitle: String = "SABONG BETTING SYSTEM"
     ): String? {
+        var connection: BluetoothConnection? = null
         return try {
             // Get or create connection with timeout
-            val connection = if (printerAddress != null) {
+            connection = if (printerAddress != null) {
                 getConnectionByAddress(context, printerAddress)
             } else {
                 BluetoothPrintersConnections.selectFirstPaired()
             } ?: return "No Bluetooth printer found. Please select a printer first."
 
-            // Create printer with appropriate settings for faster printing
-            val printer = EscPosPrinter(connection, 203, 72f, 32)
+            // Explicitly connect
+            connection.connect()
+
+            // Create printer with appropriate settings for faster printing (80mm)
+            val printer = EscPosPrinter(connection, 203, 80f, 48)
             
             // Build the receipt text once
-            val receiptText = "[C]<b>${systemTitle.uppercase()}</b>\n" +
+            val receiptText = "[C]<b>${systemTitle.trim().uppercase()}</b>\n" +
                 "[C]Official Bet Receipt\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
                 "[L]Fight No.[R]<b>$fightNumber</b>\n" +
                 "[L]Bet Side[R]<b>$side</b>\n" +
                 "[L]Bet Amount[R]<b>P$amount</b>\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
                 "[L]Reference #[R]$reference\n" +
                 "[L]Teller[R]$teller\n" +
                 "[L]Date[R]$date\n" +
                 "[L]Time[R]$time\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
                 "[C]Scan to verify\n" +
-                "\n" +
-                "[C]<barcode type='code128'>$qrData</barcode>\n" +
-                "[C]<b>$reference</b>\n"
+                "[C]<barcode type='128' height='15'>$qrData</barcode>\n" +
+                "[C]<b>$reference</b>"
 
             // Print with timeout handling
             printer.printFormattedTextAndCut(receiptText)
-            
-            // Close connection to free resources
-            try {
-                connection.disconnect()
-            } catch (e: Exception) {
-                // Ignore disconnect errors
-            }
-
             null
         } catch (e: Exception) {
             android.util.Log.e("BluetoothPrinter", "Print error: ${e.message}", e)
             e.message ?: "Printing failed. Please check printer connection."
+        } finally {
+            try {
+                connection?.disconnect()
+            } catch (e: Exception) { }
         }
     }
 
@@ -130,14 +129,17 @@ object BluetoothPrinterService {
         printerAddress: String? = null,
         systemTitle: String = "SABONG BETTING SYSTEM"
     ): String? {
+        var connection: BluetoothConnection? = null
         return try {
-            val connection = if (printerAddress != null) {
+            connection = if (printerAddress != null) {
                 getConnectionByAddress(context, printerAddress)
             } else {
                 BluetoothPrintersConnections.selectFirstPaired()
             } ?: return "No Bluetooth printer found. Please select a printer first."
 
-            val printer = EscPosPrinter(connection, 203, 72f, 32)
+            connection.connect()
+
+            val printer = EscPosPrinter(connection, 203, 80f, 48)
 
             // Calculate multiplier
             val multiplier = try {
@@ -153,36 +155,34 @@ object BluetoothPrinterService {
             val displayTime = payoutTime ?: SimpleDateFormat("hh:mm a", Locale.US).format(Date())
 
             // Build the receipt text once - simplified for faster printing
-            val receiptText = "[C]<b>${systemTitle.uppercase()}</b>\n" +
+            val receiptText = "[C]<b>${systemTitle.trim().uppercase()}</b>\n" +
                 "[C]Official Payout Receipt\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
                 "[L]Reference[R]$reference\n" +
                 "[L]Fight[R]<b>$fight</b>\n" +
                 "[L]Side[R]<b>$side</b>\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
                 "[L]Bet Amount[R]P$betAmount\n" +
                 "[L]Multiplier[R]x$multiplier\n" +
-                "[C]<b>PAYOUT: P$netPayout</b>\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
+                "[C]<b><font size='big'>TOTAL PAYOUT</font></b>\n" +
+                "[C]<b><font size='big'>P$netPayout</font></b>\n" +
+                "[C]------------------------------------------------\n" +
                 "[L]Status[R]<b>$status</b>\n" +
                 "[L]Date[R]$displayDate\n" +
                 "[L]Time[R]$displayTime\n" +
                 "[L]Teller[R]$teller\n" +
-                "[C]Thank you for playing!\n"
+                "[C]Thank you for playing!"
 
             printer.printFormattedTextAndCut(receiptText)
-            
-            // Close connection to free resources
-            try {
-                connection.disconnect()
-            } catch (e: Exception) {
-                // Ignore disconnect errors
-            }
-
             null
         } catch (e: Exception) {
             android.util.Log.e("BluetoothPrinter", "Payout print error: ${e.message}", e)
             e.message ?: "Printing failed. Please check printer connection."
+        } finally {
+            try {
+                connection?.disconnect()
+            } catch (e: Exception) { }
         }
     }
 
@@ -203,49 +203,48 @@ object BluetoothPrinterService {
         printerAddress: String? = null,
         systemTitle: String = "SABONG BETTING SYSTEM"
     ): String? {
+        var connection: BluetoothConnection? = null
         return try {
-            val connection = if (printerAddress != null) {
+            connection = if (printerAddress != null) {
                 getConnectionByAddress(context, printerAddress)
             } else {
                 BluetoothPrintersConnections.selectFirstPaired()
             } ?: return "No Bluetooth printer found. Please select a printer first."
 
-            val printer = EscPosPrinter(connection, 203, 72f, 32)
+            connection.connect()
+
+            val printer = EscPosPrinter(connection, 203, 80f, 48)
 
             // Use provided date/time or current if not available
             val displayDate = refundDate ?: SimpleDateFormat("MMM dd, yyyy", Locale.US).format(Date())
             val displayTime = refundTime ?: SimpleDateFormat("hh:mm a", Locale.US).format(Date())
 
             // Build the receipt text once - simplified for faster printing
-            val receiptText = "[C]<b>${systemTitle.uppercase()}</b>\n" +
+            val receiptText = "[C]<b>${systemTitle.trim().uppercase()}</b>\n" +
                 "[C]Official Refund Receipt\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
                 "[L]Reference[R]$reference\n" +
                 "[L]Fight[R]<b>$fight</b>\n" +
                 "[L]Side[R]<b>$side</b>\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
                 "[L]Result[R]<b>$status</b>\n" +
                 "[L]Bet Amount[R]P$betAmount\n" +
                 "[C]<b>REFUND: P$refundAmount</b>\n" +
-                "[C]------------------------------\n" +
+                "[C]------------------------------------------------\n" +
                 "[L]Date[R]$displayDate\n" +
                 "[L]Time[R]$displayTime\n" +
                 "[L]Teller[R]$teller\n" +
-                "[C]Thank you for playing!\n"
+                "[C]Thank you for playing!"
 
             printer.printFormattedTextAndCut(receiptText)
-            
-            // Close connection to free resources
-            try {
-                connection.disconnect()
-            } catch (e: Exception) {
-                // Ignore disconnect errors
-            }
-
             null
         } catch (e: Exception) {
             android.util.Log.e("BluetoothPrinter", "Refund print error: ${e.message}", e)
             e.message ?: "Printing failed. Please check printer connection."
+        } finally {
+            try {
+                connection?.disconnect()
+            } catch (e: Exception) { }
         }
     }
 }

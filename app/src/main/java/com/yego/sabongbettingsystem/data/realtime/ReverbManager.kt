@@ -13,7 +13,7 @@ import org.json.JSONObject
 
 object ReverbManager {
 
-    private const val HOST    = "192.168.1.10"
+    private const val HOST    = "192.168.0.10"
     private const val PORT    = 8080
     private const val APP_KEY = "lt6ejfvgbim9vntnqxms"
 

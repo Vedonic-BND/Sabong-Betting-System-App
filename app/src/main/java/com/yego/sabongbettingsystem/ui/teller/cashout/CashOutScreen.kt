@@ -26,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.yego.sabongbettingsystem.data.printer.BluetoothPermissionHelper
 import com.yego.sabongbettingsystem.data.printer.BluetoothPrinterService
+import com.yego.sabongbettingsystem.data.store.PrinterStore
 import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.yego.sabongbettingsystem.data.model.BetResponse
@@ -42,9 +43,13 @@ fun CashOutScreen(
 ) {
     val context   = LocalContext.current
     val userStore = remember { UserStore(context) }
+    val printerStore = remember { PrinterStore(context) }
+    val savedAddress by printerStore.printerAddress.collectAsState(initial = null)
+    
     val name      by userStore.name.collectAsState(initial = "Teller")
     val viewModel = viewModel<CashOutViewModel>()
     val reverbViewModel = viewModel<ReverbViewModel>()
+    val connected by reverbViewModel.connected.collectAsState()
     val fightState by reverbViewModel.fightState.collectAsState()
     val cashUpdated by reverbViewModel.cashUpdated.collectAsState()
     val payout    by viewModel.payout.collectAsState()
@@ -100,48 +105,55 @@ fun CashOutScreen(
     }
 
     LaunchedEffect(isPrinting) {
-        if (isPrinting && payout != null) {
-            val ctx      = context
-            val p        = payout!!
-            val tellerName = UserStore(ctx).name.first() ?: "Teller"
-            val resultError = kotlinx.coroutines.withContext(
-                kotlinx.coroutines.Dispatchers.IO
-            ) {
-                val isRefund = p.winner?.lowercase() == "draw" || p.winner?.lowercase() == "cancelled"
-                
-                if (isRefund) {
-                    BluetoothPrinterService.printRefundReceipt(
-                        context      = ctx,
-                        reference    = p.reference,
-                        fight        = p.fight,
-                        side         = p.side.uppercase(),
-                        betAmount    = p.bet_amount,
-                        refundAmount = p.net_payout,
-                        status       = p.winner?.uppercase() ?: "REFUND",
-                        refundDate   = p.payout_date,
-                        refundTime   = p.payout_time,
-                        teller       = tellerName,
-                        systemTitle  = systemTitle
-                    )
-                } else {
-                    BluetoothPrinterService.printPayoutReceipt(
-                        context      = ctx,
-                        reference    = p.reference,
-                        fight        = p.fight,
-                        side         = p.side.uppercase(),
-                        betAmount    = p.bet_amount,
-                        netPayout    = p.net_payout,
-                        status       = p.status.uppercase(),
-                        payoutDate   = p.payout_date,
-                        payoutTime   = p.payout_time,
-                        teller       = tellerName,
-                        systemTitle  = systemTitle
-                    )
+        if (isPrinting) {
+            try {
+                if (payout != null) {
+                    val ctx = context
+                    val p = payout!!
+                    val addr = savedAddress
+                    val tellerName = UserStore(ctx).name.first() ?: "Teller"
+                    val resultError = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val isRefund = p.winner?.lowercase() == "draw" || p.winner?.lowercase() == "cancelled"
+                        if (isRefund) {
+                            BluetoothPrinterService.printRefundReceipt(
+                                context = ctx,
+                                reference = p.reference,
+                                fight = p.fight,
+                                side = p.side.uppercase(),
+                                betAmount = p.bet_amount,
+                                refundAmount = p.net_payout,
+                                status = p.winner?.uppercase() ?: "REFUND",
+                                refundDate = p.payout_date,
+                                refundTime = p.payout_time,
+                                teller = tellerName,
+                                printerAddress = addr,
+                                systemTitle = systemTitle
+                            )
+                        } else {
+                            BluetoothPrinterService.printPayoutReceipt(
+                                context = ctx,
+                                reference = p.reference,
+                                fight = p.fight,
+                                side = p.side.uppercase(),
+                                betAmount = p.bet_amount,
+                                netPayout = p.net_payout,
+                                status = p.status.uppercase(),
+                                payoutDate = p.payout_date,
+                                payoutTime = p.payout_time,
+                                teller = tellerName,
+                                printerAddress = addr,
+                                systemTitle = systemTitle
+                            )
+                        }
+                    }
+                    printSuccess = resultError == null
+                    printError = resultError
                 }
+            } catch (e: Exception) {
+                printError = e.message ?: "An unexpected error occurred while printing"
+            } finally {
+                isPrinting = false
             }
-            isPrinting   = false
-            printSuccess = resultError == null
-            printError   = resultError
         }
     }
 
@@ -153,6 +165,8 @@ fun CashOutScreen(
             // Auto-print after confirmation
             if (BluetoothPermissionHelper.hasPermissions(context)) {
                 isPrinting = true
+            } else {
+                launcher.launch(BluetoothPermissionHelper.requiredPermissions())
             }
         }
     }
@@ -188,7 +202,7 @@ fun CashOutScreen(
                     }
                 },
                 actions = {
-                    WsStatusBadge(connected = true)
+                    WsStatusBadge(connected = connected)
                     Spacer(Modifier.width(8.dp))
                     IconButton(onClick = { navController.navigate("printer_settings") }) {
                         Icon(Icons.Default.AdfScanner, contentDescription = "Printer Settings")
@@ -555,7 +569,15 @@ fun CashOutScreen(
                                                 }
                                             }
                                             Button(
-                                                onClick = { if (BluetoothPermissionHelper.hasPermissions(context)) isPrinting = true else launcher.launch(BluetoothPermissionHelper.requiredPermissions()) },
+                                                onClick = { 
+                                                    printSuccess = false
+                                                    printError   = null
+                                                    if (BluetoothPermissionHelper.hasPermissions(context)) {
+                                                        isPrinting = true 
+                                                    } else {
+                                                        launcher.launch(BluetoothPermissionHelper.requiredPermissions()) 
+                                                    }
+                                                },
                                                 modifier = Modifier.fillMaxWidth().height(52.dp),
                                                 shape    = RoundedCornerShape(12.dp),
                                                 colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),

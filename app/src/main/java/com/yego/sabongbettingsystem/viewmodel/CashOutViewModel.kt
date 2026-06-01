@@ -163,9 +163,12 @@ class CashOutViewModel : ViewModel() {
                 )
                 if (response.isSuccessful) {
                     _confirmed.value = true
-                    _payout.value    = null
-                    loadBetHistory(context) // refresh history after payout
-                    loadTellerCashStatus(context) // refresh cash status
+                    // Update current payout status to "paid" so it can be printed correctly
+                    _payout.value?.let { current ->
+                        _payout.value = current.copy(status = "paid")
+                    }
+                    loadBetHistory(context) 
+                    loadTellerCashStatus(context)
                 } else {
                     val errorMessage = try {
                         val errorBody = response.errorBody()?.string() ?: ""
