@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -514,56 +515,52 @@ fun CashInScreen(
                 ) {
                     Button(
                         onClick  = { if (meronOpen) selectedSide = "meron" },
-                        modifier = Modifier.weight(1f).height(56.dp),
+                        modifier = Modifier.weight(1f).height(80.dp),
                         shape    = RoundedCornerShape(12.dp),
                         enabled  = meronOpen,
                         colors = ButtonDefaults.buttonColors(
                             containerColor         = if (selectedSide == "meron")
-                                MaterialTheme.colorScheme.error
+                                Color(0xFFDC2626)
                             else
-                                MaterialTheme.colorScheme.error.copy(alpha = 0.2f),
+                                Color(0xFFDC2626).copy(alpha = 0.2f),
                             contentColor           = if (selectedSide == "meron")
-                                MaterialTheme.colorScheme.onError
+                                Color.White
                             else
-                                MaterialTheme.colorScheme.error,
-                            disabledContainerColor = MaterialTheme.colorScheme.error
-                                .copy(alpha = 0.06f),
-                            disabledContentColor   = MaterialTheme.colorScheme.error
-                                .copy(alpha = 0.3f)
+                                Color(0xFFDC2626),
+                            disabledContainerColor = Color(0xFFDC2626).copy(alpha = 0.06f),
+                            disabledContentColor   = Color(0xFFDC2626).copy(alpha = 0.3f)
                         )
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("MERON", fontWeight = FontWeight.Bold)
+                            Text("MERON", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
                             if (!meronOpen) {
-                                Text(text = "Closed", fontSize = 10.sp)
+                                Text(text = "Closed", fontSize = 14.sp)
                             }
                         }
                     }
 
                     Button(
                         onClick  = { if (walaOpen) selectedSide = "wala" },
-                        modifier = Modifier.weight(1f).height(56.dp),
+                        modifier = Modifier.weight(1f).height(80.dp),
                         shape    = RoundedCornerShape(12.dp),
                         enabled  = walaOpen,
                         colors   = ButtonDefaults.buttonColors(
                             containerColor         = if (selectedSide == "wala")
-                                MaterialTheme.colorScheme.primary
+                                Color(0xFF16A34A)
                             else
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                Color(0xFF16A34A).copy(alpha = 0.2f),
                             contentColor           = if (selectedSide == "wala")
-                                MaterialTheme.colorScheme.onPrimary
+                                Color.White
                             else
-                                MaterialTheme.colorScheme.primary,
-                            disabledContainerColor = MaterialTheme.colorScheme.primary
-                                .copy(alpha = 0.06f),
-                            disabledContentColor   = MaterialTheme.colorScheme.primary
-                                .copy(alpha = 0.3f)
+                                Color(0xFF16A34A),
+                            disabledContainerColor = Color(0xFF16A34A).copy(alpha = 0.06f),
+                            disabledContentColor   = Color(0xFF16A34A).copy(alpha = 0.3f)
                         )
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("WALA", fontWeight = FontWeight.Bold)
+                            Text("WALA", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
                             if (!walaOpen) {
-                                Text(text = "Closed", fontSize = 10.sp)
+                                Text(text = "Closed", fontSize = 14.sp)
                             }
                         }
                     }
@@ -574,7 +571,8 @@ fun CashInScreen(
                     value           = amount,
                     onValueChange   = { amount = it },
                     label           = { Text("Bet Amount") },
-                    prefix          = { Text("₱") },
+                    prefix          = { Text("₱", fontSize = 24.sp, fontWeight = FontWeight.Bold) },
+                    textStyle       = LocalTextStyle.current.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
                     modifier        = Modifier.fillMaxWidth(),
                     singleLine      = true,
                     shape           = RoundedCornerShape(12.dp),
@@ -586,76 +584,81 @@ fun CashInScreen(
                 // quick amount buttons
                 val quickAmounts = listOf(50, 100, 200, 500, 1000, 5000, 10000)
 
+                @Composable
+                fun AmountButton(value: Int, modifier: Modifier) {
+                    val backgroundColor = when (value) {
+                        50 -> Color(0xFFEF5350)    // Light Red
+                        100 -> Color(0xFF9C27B0)   // Purple
+                        200 -> Color(0xFF4CAF50)   // Green
+                        500 -> Color(0xFFFFC107)   // Gold
+                        1000 -> Color(0xFF03A9F4)  // Light Blue
+                        5000 -> Color(0xFFFFEB3B)  // Yellow
+                        10000 -> Color(0xFF3F51B5) // Dark Blue
+                        else -> MaterialTheme.colorScheme.primary
+                    }
+                    val contentColor = when (value) {
+                        500, 5000 -> Color.Black   // Black text for lighter backgrounds
+                        else -> Color.White
+                    }
+
+                    Button(
+                        onClick = {
+                            val current = amount.toDoubleOrNull() ?: 0.0
+                            amount = (current + value).toInt().toString()
+                        },
+                        modifier = modifier.height(64.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = backgroundColor,
+                            contentColor = contentColor
+                        ),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text("+$value", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Row 1: 50, 100, 200
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        quickAmounts.take(4).forEach { value ->
-                            OutlinedButton(
-                                onClick        = {
-                                    val current = amount.toDoubleOrNull() ?: 0.0
-                                    amount      = (current + value).toInt().toString()
-                                },
-                                modifier       = Modifier.weight(1f),
-                                shape          = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(
-                                    horizontal = 4.dp, vertical = 8.dp
-                                )
-                            ) {
-                                Text(
-                                    text       = "+$value",
-                                    fontSize   = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                        quickAmounts.slice(0..2).forEach { value ->
+                            AmountButton(value, Modifier.weight(1f))
                         }
                     }
 
+                    // Row 2: 500, 1000, 5000
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        quickAmounts.drop(4).forEach { value ->
-                            OutlinedButton(
-                                onClick        = {
-                                    val current = amount.toDoubleOrNull() ?: 0.0
-                                    amount      = (current + value).toInt().toString()
-                                },
-                                modifier       = Modifier.weight(1f),
-                                shape          = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(
-                                    horizontal = 4.dp, vertical = 8.dp
-                                )
-                            ) {
-                                Text(
-                                    text       = "+$value",
-                                    fontSize   = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                        quickAmounts.slice(3..5).forEach { value ->
+                            AmountButton(value, Modifier.weight(1f))
                         }
+                    }
 
-                        OutlinedButton(
-                            onClick        = { amount = "" },
-                            modifier       = Modifier.weight(1f),
-                            shape          = RoundedCornerShape(8.dp),
-                            colors         = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
+                    // Row 3: 10000, Clear (occupies 2nd and 3rd col)
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // +10000
+                        AmountButton(10000, Modifier.weight(1f))
+
+                        // Clear (occupies 2 columns)
+                        Button(
+                            onClick  = { amount = "" },
+                            modifier = Modifier.weight(2f).height(64.dp),
+                            shape    = RoundedCornerShape(12.dp),
+                            colors   = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFD32F2F), // Red
+                                contentColor = Color.White
                             ),
-                            border         = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
-                            ),
-                            contentPadding = PaddingValues(
-                                horizontal = 4.dp, vertical = 8.dp
-                            )
+                            contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text(
-                                text       = "Clear",
-                                fontSize   = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Text("Clear", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
