@@ -501,201 +501,231 @@ fun CashInScreen(
 
             // ── Place Bet ─────────────────────────────────
             if (statusDisplay == "open" && (fight != null || reverbFight != null)) {
+                
+                if (onHandCash < 100000) {
 
-                Text(
-                    text       = "Place Bet",
-                    style      = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // side selector
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick  = { if (meronOpen) selectedSide = "meron" },
-                        modifier = Modifier.weight(1f).height(80.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                        enabled  = meronOpen,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor         = if (selectedSide == "meron")
-                                Color(0xFFDC2626)
-                            else
-                                Color(0xFFDC2626).copy(alpha = 0.2f),
-                            contentColor           = if (selectedSide == "meron")
-                                Color.White
-                            else
-                                Color(0xFFDC2626),
-                            disabledContainerColor = Color(0xFFDC2626).copy(alpha = 0.06f),
-                            disabledContentColor   = Color(0xFFDC2626).copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("MERON", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                            if (!meronOpen) {
-                                Text(text = "Closed", fontSize = 14.sp)
-                            }
-                        }
-                    }
-
-                    Button(
-                        onClick  = { if (walaOpen) selectedSide = "wala" },
-                        modifier = Modifier.weight(1f).height(80.dp),
-                        shape    = RoundedCornerShape(12.dp),
-                        enabled  = walaOpen,
-                        colors   = ButtonDefaults.buttonColors(
-                            containerColor         = if (selectedSide == "wala")
-                                Color(0xFF16A34A)
-                            else
-                                Color(0xFF16A34A).copy(alpha = 0.2f),
-                            contentColor           = if (selectedSide == "wala")
-                                Color.White
-                            else
-                                Color(0xFF16A34A),
-                            disabledContainerColor = Color(0xFF16A34A).copy(alpha = 0.06f),
-                            disabledContentColor   = Color(0xFF16A34A).copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("WALA", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                            if (!walaOpen) {
-                                Text(text = "Closed", fontSize = 14.sp)
-                            }
-                        }
-                    }
-                }
-
-                // amount input
-                OutlinedTextField(
-                    value           = amount,
-                    onValueChange   = { amount = it },
-                    label           = { Text("Bet Amount") },
-                    prefix          = { Text("₱", fontSize = 24.sp, fontWeight = FontWeight.Bold) },
-                    textStyle       = LocalTextStyle.current.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
-                    modifier        = Modifier.fillMaxWidth(),
-                    singleLine      = true,
-                    shape           = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number
+                    Text(
+                        text       = "Place Bet",
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                )
 
-                // quick amount buttons
-                val quickAmounts = listOf(50, 100, 200, 500, 1000, 5000, 10000)
-
-                @Composable
-                fun AmountButton(value: Int, modifier: Modifier) {
-                    val backgroundColor = when (value) {
-                        50 -> Color(0xFFEF5350)    // Light Red
-                        100 -> Color(0xFF9C27B0)   // Purple
-                        200 -> Color(0xFF4CAF50)   // Green
-                        500 -> Color(0xFFFFC107)   // Gold
-                        1000 -> Color(0xFF03A9F4)  // Light Blue
-                        5000 -> Color(0xFFFFEB3B)  // Yellow
-                        10000 -> Color(0xFF3F51B5) // Dark Blue
-                        else -> MaterialTheme.colorScheme.primary
-                    }
-                    val contentColor = when (value) {
-                        500, 5000 -> Color.Black   // Black text for lighter backgrounds
-                        else -> Color.White
-                    }
-
-                    Button(
-                        onClick = {
-                            val current = amount.toDoubleOrNull() ?: 0.0
-                            amount = (current + value).toInt().toString()
-                        },
-                        modifier = modifier.height(64.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = backgroundColor,
-                            contentColor = contentColor
-                        ),
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
-                        Text("+$value", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Row 1: 50, 100, 200
+                    // side selector
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        quickAmounts.slice(0..2).forEach { value ->
-                            AmountButton(value, Modifier.weight(1f))
-                        }
-                    }
-
-                    // Row 2: 500, 1000, 5000
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        quickAmounts.slice(3..5).forEach { value ->
-                            AmountButton(value, Modifier.weight(1f))
-                        }
-                    }
-
-                    // Row 3: 10000, Clear (occupies 2nd and 3rd col)
-                    Row(
-                        modifier              = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // +10000
-                        AmountButton(10000, Modifier.weight(1f))
-
-                        // Clear (occupies 2 columns)
                         Button(
-                            onClick  = { amount = "" },
-                            modifier = Modifier.weight(2f).height(64.dp),
+                            onClick  = { if (meronOpen) selectedSide = "meron" },
+                            modifier = Modifier.weight(1f).height(80.dp),
                             shape    = RoundedCornerShape(12.dp),
+                            enabled  = meronOpen,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor         = if (selectedSide == "meron")
+                                    Color(0xFFDC2626)
+                                else
+                                    Color(0xFFDC2626).copy(alpha = 0.2f),
+                                contentColor           = if (selectedSide == "meron")
+                                    Color.White
+                                else
+                                    Color(0xFFDC2626),
+                                disabledContainerColor = Color(0xFFDC2626).copy(alpha = 0.06f),
+                                disabledContentColor   = Color(0xFFDC2626).copy(alpha = 0.3f)
+                            )
+                        ) {
+                            // ... existing content
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("MERON", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                                if (!meronOpen) {
+                                    Text(text = "Closed", fontSize = 14.sp)
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick  = { if (walaOpen) selectedSide = "wala" },
+                            modifier = Modifier.weight(1f).height(80.dp),
+                            shape    = RoundedCornerShape(12.dp),
+                            enabled  = walaOpen,
                             colors   = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFFD32F2F), // Red
-                                contentColor = Color.White
+                                containerColor         = if (selectedSide == "wala")
+                                    Color(0xFF16A34A)
+                                else
+                                    Color(0xFF16A34A).copy(alpha = 0.2f),
+                                contentColor           = if (selectedSide == "wala")
+                                    Color.White
+                                else
+                                    Color(0xFF16A34A),
+                                disabledContainerColor = Color(0xFF16A34A).copy(alpha = 0.06f),
+                                disabledContentColor   = Color(0xFF16A34A).copy(alpha = 0.3f)
+                            )
+                        ) {
+                            // ... existing content
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("WALA", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                                if (!walaOpen) {
+                                    Text(text = "Closed", fontSize = 14.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    // amount input
+                    OutlinedTextField(
+                        value           = amount,
+                        onValueChange   = { input ->
+                            val numeric = input.filter { it.isDigit() }
+                            val value = numeric.toDoubleOrNull() ?: 0.0
+                            if (value <= 10000) {
+                                amount = numeric
+                            } else {
+                                amount = "10000"
+                            }
+                        },
+                        label           = { Text("Bet Amount (Max ₱10,000)") },
+                        prefix          = { Text("₱", fontSize = 24.sp, fontWeight = FontWeight.Bold) },
+                        textStyle       = LocalTextStyle.current.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                        modifier        = Modifier.fillMaxWidth(),
+                        singleLine      = true,
+                        shape           = RoundedCornerShape(12.dp),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        )
+                    )
+
+                    // quick amount buttons
+                    val quickAmounts = listOf(50, 100, 200, 500, 1000, 5000, 10000)
+
+                    @Composable
+                    fun AmountButton(value: Int, modifier: Modifier) {
+                        val backgroundColor = when (value) {
+                            50 -> Color(0xFFEF5350)    // Light Red
+                            100 -> Color(0xFF9C27B0)   // Purple
+                            200 -> Color(0xFF4CAF50)   // Green
+                            500 -> Color(0xFFFFC107)   // Gold
+                            1000 -> Color(0xFF03A9F4)  // Light Blue
+                            5000 -> Color(0xFFFFEB3B)  // Yellow
+                            10000 -> Color(0xFF3F51B5) // Dark Blue
+                            else -> MaterialTheme.colorScheme.primary
+                        }
+                        val contentColor = when (value) {
+                            500, 5000 -> Color.Black   // Black text for lighter backgrounds
+                            else -> Color.White
+                        }
+
+                        Button(
+                            onClick = {
+                                val current = amount.toDoubleOrNull() ?: 0.0
+                                val next = (current + value).toInt()
+                                amount = if (next > 10000) "10000" else next.toString()
+                            },
+                            modifier = modifier.height(64.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = backgroundColor,
+                                contentColor = contentColor
                             ),
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("Clear", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            val label = if (value == 10000) "$value" else "+$value"
+                            Text(label, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                }
 
-                // place bet button
-                Button(
-                    onClick = {
-                        val amt = amount.toDoubleOrNull()
-                        if (amt != null && selectedSide.isNotEmpty()) {
-                            val sideStillOpen = if (selectedSide == "meron")
-                                meronOpen else walaOpen
-                            if (sideStillOpen) {
-                                showConfirmDialog = true
-                            } else {
-                                selectedSide = ""
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Row 1: 50, 100, 200
+                        Row(
+                            modifier              = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            quickAmounts.slice(0..2).forEach { value ->
+                                AmountButton(value, Modifier.weight(1f))
                             }
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape   = RoundedCornerShape(12.dp),
-                    enabled = selectedSide.isNotEmpty() &&
-                            amount.isNotBlank() &&
-                            !isLoading
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier    = Modifier.size(20.dp),
-                            color       = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
+
+                        // Row 2: 500, 1000, 5000
+                        Row(
+                            modifier              = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            quickAmounts.slice(3..5).forEach { value ->
+                                AmountButton(value, Modifier.weight(1f))
+                            }
+                        }
+
+                        // Row 3: 10000, Clear (occupies 2nd and 3rd col)
+                        Row(
+                            modifier              = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // 10000
+                            AmountButton(10000, Modifier.weight(1f))
+
+                            // Clear (occupies 2 columns)
+                            Button(
+                                onClick  = { amount = "" },
+                                modifier = Modifier.weight(2f).height(64.dp),
+                                shape    = RoundedCornerShape(12.dp),
+                                colors   = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFD32F2F), // Red
+                                    contentColor = Color.White
+                                ),
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text("Clear", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    // place bet button
+                    Button(
+                        onClick = {
+                            val amt = amount.toDoubleOrNull()
+                            if (amt != null && selectedSide.isNotEmpty()) {
+                                val sideStillOpen = if (selectedSide == "meron")
+                                    meronOpen else walaOpen
+                                if (sideStillOpen) {
+                                    showConfirmDialog = true
+                                } else {
+                                    selectedSide = ""
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape   = RoundedCornerShape(12.dp),
+                        enabled = selectedSide.isNotEmpty() &&
+                                amount.isNotBlank() &&
+                                !isLoading
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier    = Modifier.size(20.dp),
+                                color       = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text       = "Place Bet",
+                                fontSize   = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                } else {
+                    // On-hand cash limiter message
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text(
-                            text       = "Place Bet",
-                            fontSize   = 16.sp,
-                            fontWeight = FontWeight.SemiBold
+                            text = "Cash on-hand limit exceeded (₱${String.format(Locale.US, "%,.2f", onHandCash)}). Please remit cash to a runner before taking more bets (Max: ₱100,000).",
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
